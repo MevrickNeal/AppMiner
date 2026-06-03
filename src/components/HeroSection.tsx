@@ -1,26 +1,63 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 
 export default function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [images, setImages] = useState<HTMLImageElement[]>([]);
+  const imagesRef = useRef<HTMLImageElement[]>([]);
   const [ready, setReady] = useState(false);
   const totalFrames = 240;
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
-    offset: ["start start", "end end"]
+    offset: ["start start", "end end"],
   });
 
   const frameIndex = useTransform(scrollYProgress, [0, 1], [0, totalFrames - 1]);
 
-  // Eagerly preload images
+  // ── Draw a single frame onto the canvas ──────────────────
+  const draw = useCallback((index: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const img = imagesRef.current[Math.floor(index)];
+    if (!img || !img.complete || img.naturalWidth === 0) return;
+
+    // object-fit: contain
+    const hRatio = canvas.width / img.naturalWidth;
+    const vRatio = canvas.height / img.naturalHeight;
+    const ratio = Math.min(hRatio, vRatio);
+    const cx = (canvas.width - img.naturalWidth * ratio) / 2;
+    const cy = (canvas.height - img.naturalHeight * ratio) / 2;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, cx, cy, img.naturalWidth * ratio, img.naturalHeight * ratio);
+  }, []);
+
+  // ── Set canvas size (only on mount + resize, NOT inside draw) ──
   useEffect(() => {
-    const loadedImages: HTMLImageElement[] = [];
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      draw(frameIndex.get());
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, [ready, draw, frameIndex]);
+
+  // ── Preload all frames ────────────────────────────────────
+  useEffect(() => {
     let loadedCount = 0;
+    const images: HTMLImageElement[] = [];
 
     for (let i = 1; i <= totalFrames; i++) {
       const img = new Image();
@@ -28,104 +65,85 @@ export default function HeroSection() {
       img.src = `/sequence/ezgif-frame-${num}.png`;
       img.onload = () => {
         loadedCount++;
-        if (loadedCount >= 3) {
-          setReady(true);
-        }
+        // Show animation as soon as first few frames are ready
+        if (loadedCount === 3) setReady(true);
       };
-      loadedImages.push(img);
+      images.push(img);
     }
-    setImages(loadedImages);
+
+    imagesRef.current = images;
   }, []);
 
-  const draw = (index: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    
-    const img = images[Math.floor(index)];
-    if (!img || !img.complete) return;
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    // object-fit: contain logic
-    const hRatio = canvas.width / img.width;
-    const vRatio = canvas.height / img.height;
-    const ratio = Math.min(hRatio, vRatio);
-    const centerShift_x = (canvas.width - img.width * ratio) / 2;
-    const centerShift_y = (canvas.height - img.height * ratio) / 2;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(
-      img, 
-      0, 0, img.width, img.height,
-      centerShift_x, centerShift_y, img.width * ratio, img.height * ratio
-    );
-  };
-
+  // ── Redraw on scroll ─────────────────────────────────────
   useMotionValueEvent(frameIndex, "change", (latest) => {
-    if (ready) {
-      draw(latest);
-    }
+    if (ready) draw(latest);
   });
 
-  // Initial draw and handle resize
+  // ── Initial draw when ready ───────────────────────────────
   useEffect(() => {
-    if (ready) {
-      draw(frameIndex.get());
-      const handleResize = () => draw(frameIndex.get());
-      window.addEventListener("resize", handleResize);
-      return () => window.removeEventListener("resize", handleResize);
-    }
-  }, [ready]);
+    if (ready) draw(frameIndex.get());
+  }, [ready, draw, frameIndex]);
 
-  // Caption 1: 10% - 30%
-  const caption1Opacity = useTransform(scrollYProgress, [0.05, 0.1, 0.25, 0.3], [0, 1, 1, 0]);
-  const caption1Y = useTransform(scrollYProgress, [0.05, 0.15], [50, 0]);
+  // ── Caption scroll-linked visibility ─────────────────────
+  const cap1Opacity = useTransform(scrollYProgress, [0.05, 0.12, 0.27, 0.33], [0, 1, 1, 0]);
+  const cap1Y      = useTransform(scrollYProgress, [0.05, 0.15], [40, 0]);
 
-  // Caption 2: 40% - 60%
-  const caption2Opacity = useTransform(scrollYProgress, [0.35, 0.4, 0.55, 0.6], [0, 1, 1, 0]);
-  const caption2Y = useTransform(scrollYProgress, [0.35, 0.45], [50, 0]);
+  const cap2Opacity = useTransform(scrollYProgress, [0.38, 0.44, 0.57, 0.63], [0, 1, 1, 0]);
+  const cap2Y      = useTransform(scrollYProgress, [0.38, 0.48], [40, 0]);
 
-  // Caption 3: 70% - 90%
-  const caption3Opacity = useTransform(scrollYProgress, [0.65, 0.7, 0.85, 0.9], [0, 1, 1, 0]);
-  const caption3Y = useTransform(scrollYProgress, [0.65, 0.75], [50, 0]);
+  const cap3Opacity = useTransform(scrollYProgress, [0.67, 0.73, 0.87, 0.93], [0, 1, 1, 0]);
+  const cap3Y      = useTransform(scrollYProgress, [0.67, 0.77], [40, 0]);
 
   return (
+    // ── The tall scroll container ─────────────────────────
+    // Starts on the off-white hero, transitions to dark at the bottom
     <div ref={containerRef} className="relative h-[600vh]">
       <div className="sticky top-0 h-screen w-full overflow-hidden">
-        {/* Canvas */}
-        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full mix-blend-multiply" />
-        
-        {/* Captions Overlay */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center lg:justify-start lg:pl-32">
-          
-          <motion.div 
-            style={{ opacity: caption1Opacity, y: caption1Y }}
-            className="absolute glass-panel rounded-3xl p-8 max-w-sm"
-          >
-            <h3 className="text-2xl font-black text-black mb-2 tracking-tighter">Precision Engineering</h3>
-            <p className="text-gray-500 font-medium text-sm leading-relaxed">Every component is machined to sub-millimeter tolerances, ensuring maximum thermal dissipation and continuous peak performance.</p>
-          </motion.div>
 
-          <motion.div 
-            style={{ opacity: caption2Opacity, y: caption2Y }}
-            className="absolute glass-panel rounded-3xl p-8 max-w-sm lg:left-auto lg:right-32"
-          >
-            <h3 className="text-2xl font-black text-black mb-2 tracking-tighter">Quantum Hashrate</h3>
-            <p className="text-gray-500 font-medium text-sm leading-relaxed">Our proprietary ASICs break the boundaries of conventional silicon, delivering up to 200 TH/s while maintaining 15 J/TH efficiency.</p>
-          </motion.div>
+        {/* ── Seamless gradient background ────────────────
+            Top = off-white (matching HeroIntro)
+            Bottom = site dark (#080808)                    */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#f8f9fa] via-[#c0c0c0] to-[#080808]" />
 
-          <motion.div 
-            style={{ opacity: caption3Opacity, y: caption3Y }}
-            className="absolute glass-panel rounded-3xl p-8 max-w-sm"
-          >
-            <h3 className="text-2xl font-black text-black mb-2 tracking-tighter">Immutable Architecture</h3>
-            <p className="text-gray-500 font-medium text-sm leading-relaxed">Directly integrated with cold storage protocols, ensuring your mined assets are instantly secured offline without intermediate pool risk.</p>
-          </motion.div>
+        {/* ── Canvas — no blend mode, it sits on gradient ─ */}
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full"
+          style={{ mixBlendMode: "multiply" }}
+        />
 
-        </div>
+        {/* ── Gradient fade into dark at bottom ───────────
+            Ensures clean blend into the dark catalog below */}
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-b from-transparent to-[#080808]" />
+
+        {/* ── Caption overlays ─────────────────────────── */}
+        {/* Caption 1 – lower-left */}
+        <motion.div
+          style={{ opacity: cap1Opacity, y: cap1Y }}
+          className="pointer-events-none absolute left-8 lg:left-20 bottom-[30%] glass-panel rounded-3xl p-6 lg:p-8 max-w-xs lg:max-w-sm"
+        >
+          <h3 className="text-xl lg:text-2xl font-black text-black mb-2 tracking-tighter">Precision Engineering</h3>
+          <p className="text-gray-600 text-sm leading-relaxed">Every component machined to sub-millimeter tolerances for peak thermal performance.</p>
+        </motion.div>
+
+        {/* Caption 2 – upper-right */}
+        <motion.div
+          style={{ opacity: cap2Opacity, y: cap2Y }}
+          className="pointer-events-none absolute right-8 lg:right-20 top-[25%] glass-panel rounded-3xl p-6 lg:p-8 max-w-xs lg:max-w-sm"
+        >
+          <h3 className="text-xl lg:text-2xl font-black text-black mb-2 tracking-tighter">Quantum Hashrate</h3>
+          <p className="text-gray-600 text-sm leading-relaxed">Proprietary ASICs delivering up to 200 TH/s at industry-leading 15 J/TH efficiency.</p>
+        </motion.div>
+
+        {/* Caption 3 – lower-right */}
+        <motion.div
+          style={{ opacity: cap3Opacity, y: cap3Y }}
+          className="pointer-events-none absolute right-8 lg:right-20 bottom-[25%] glass-panel rounded-3xl p-6 lg:p-8 max-w-xs lg:max-w-sm"
+        >
+          <h3 className="text-xl lg:text-2xl font-black text-black mb-2 tracking-tighter">Immutable Architecture</h3>
+          <p className="text-gray-600 text-sm leading-relaxed">Direct cold-storage integration keeps your mined assets air-gapped from the moment they&apos;re earned.</p>
+        </motion.div>
+
       </div>
     </div>
   );
