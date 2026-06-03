@@ -23,15 +23,16 @@ export default function Navbar() {
           {/* Logo */}
           <div className="flex-1">
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="relative w-9 h-9">
+              {/* Icon-only mark — no white background bleed */}
+              <div className="relative w-9 h-9 flex-shrink-0">
                 <Image
-                  src="/Products/logo.png"
-                  alt="AppsMiner logo"
+                  src="/Products/icon blue.png"
+                  alt="AppsMiner icon"
                   fill
                   className="object-contain"
                 />
               </div>
-              <span className="text-xl font-black tracking-tighter text-black">
+              <span className="text-xl font-black tracking-tighter text-black group-hover:text-gray-700 transition-colors">
                 APPSMINER
               </span>
             </Link>
@@ -79,6 +80,19 @@ export default function Navbar() {
             transition={{ duration: 0.2 }}
             className="fixed top-20 inset-x-0 z-40 bg-[#f8f9fa]/95 backdrop-blur-xl border-b border-black/10 flex flex-col px-6 py-8 gap-6 md:hidden"
           >
+            {/* Mobile logo */}
+            <div className="flex items-center gap-3 pb-4 border-b border-black/10">
+              <div className="relative w-8 h-8 flex-shrink-0">
+                <Image
+                  src="/Products/icon blue.png"
+                  alt="AppsMiner icon"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <span className="text-base font-black tracking-tighter text-black">APPSMINER</span>
+            </div>
+
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.label}
