@@ -1,26 +1,60 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-primary: #00f2ff;
+  --color-accent: #ffb300;
+  --color-accent-light: #ffd54f;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --background: #ffffff;
+  --foreground: #000000;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #000000;
+    --foreground: #ffffff;
   }
 }
 
 body {
-  background: var(--background);
   color: var(--foreground);
+  background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Brutalist / Clean Card Styles */
+.bento-card-light {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 2rem;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.04);
+  transition: all 500ms;
+}
+.bento-card-light:hover {
+  box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+}
+
+.bento-card-dark {
+  background-color: #050505;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 2rem;
+  overflow: hidden;
+  transition: all 500ms;
+}
+.bento-card-dark:hover {
+  border-color: rgba(255,255,255,0.2);
+}
+
+/* Hide scrollbar for tickers */
+.ticker-track {
+  animation: ticker 40s linear infinite;
+}
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
