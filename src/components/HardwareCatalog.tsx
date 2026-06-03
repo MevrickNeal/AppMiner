@@ -8,6 +8,7 @@ import {
   Shield, Clock, Package
 } from "lucide-react";
 import Image from "next/image";
+import { useTranslation } from "@/context/LanguageContext";
 
 // ─── Types ────────────────────────────────────────────────────
 type SpecGroup = { label: string; rows: { key: string; value: string; highlight?: boolean }[] };
@@ -429,30 +430,40 @@ const GROUP_ICONS: Record<string, React.ElementType> = {
 // ─────────────────────────────────────────────────────────────
 export default function HardwareCatalog() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const { t, isRtl } = useTranslation();
 
   const flagships = products.filter((p) => p.type === "flagship");
   const micros    = products.filter((p) => p.type === "micro");
   const bundles   = products.filter((p) => p.type === "bundle");
 
   return (
-    <section className="py-32 bg-[#080808] text-white relative z-20">
+    <section id="products" className="py-32 bg-[#080808] text-white relative z-20" dir={isRtl ? "rtl" : "ltr"}>
       <div className="max-w-[1400px] mx-auto px-6">
 
         {/* Heading */}
         <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
           <div className="max-w-xl">
-            <h2 className="text-[10px] font-black tracking-[0.3em] text-gray-500 uppercase mb-4">Hardware Catalog</h2>
+            <h2 className="text-[10px] font-black tracking-[0.3em] text-gray-500 uppercase mb-4">{t("catalogTitle")}</h2>
             <h3 className="text-4xl md:text-6xl font-black tracking-tighter uppercase leading-none text-white">
-              Precision <br /><span className="text-gray-600">Mining</span>
+              {isRtl ? (
+                <>
+                  أجهزة التعدين<br />
+                  <span className="text-gray-600">عالية الدقة</span>
+                </>
+              ) : (
+                <>
+                  Precision <br /><span className="text-gray-600">Mining Arrays</span>
+                </>
+              )}
             </h3>
           </div>
           <p className="text-gray-600 text-sm max-w-xs font-medium leading-relaxed">
-            Click any device to open its full spec sheet.
+            {t("catalogSubtitle")}
           </p>
         </div>
 
         {/* Flagship */}
-        <div className="mb-16">
+        <div className="mb-20" id="flagship-series">
           <h4 className="text-xl font-black mb-8 flex items-center gap-2 text-white/80 uppercase tracking-widest">
             <Zap size={18} className="text-[#00f2ff]" /> Pro Series Flagships
           </h4>
@@ -461,23 +472,23 @@ export default function HardwareCatalog() {
           </div>
         </div>
 
-        {/* Micro + Bundles */}
-        <div className="grid lg:grid-cols-3 gap-10">
-          <div className="lg:col-span-2">
-            <h4 className="text-xl font-black mb-8 flex items-center gap-2 text-white/80 uppercase tracking-widest">
-              <Cpu size={18} className="text-[#00f2ff]" /> Micro-Controller Series
-            </h4>
-            <div className="grid sm:grid-cols-2 gap-6">
-              {micros.map((p) => <ProductCard key={p.id} product={p} onClick={() => setSelectedProduct(p)} />)}
-            </div>
+        {/* Micro Series */}
+        <div className="mb-20" id="micro-series">
+          <h4 className="text-xl font-black mb-8 flex items-center gap-2 text-white/80 uppercase tracking-widest">
+            <Cpu size={18} className="text-[#00f2ff]" /> Micro-Controller Series
+          </h4>
+          <div className="grid md:grid-cols-3 gap-6">
+            {micros.map((p) => <ProductCard key={p.id} product={p} onClick={() => setSelectedProduct(p)} />)}
           </div>
-          <div>
-            <h4 className="text-xl font-black mb-8 flex items-center gap-2 text-white/80 uppercase tracking-widest">
-              <ShoppingCart size={18} className="text-[#00f2ff]" /> Bundles
-            </h4>
-            <div className="grid grid-cols-1 gap-6">
-              {bundles.map((p) => <ProductCard key={p.id} product={p} onClick={() => setSelectedProduct(p)} />)}
-            </div>
+        </div>
+
+        {/* Bundles */}
+        <div id="prices">
+          <h4 className="text-xl font-black mb-8 flex items-center gap-2 text-white/80 uppercase tracking-widest">
+            <ShoppingCart size={18} className="text-[#00f2ff]" /> Distributed Bundles
+          </h4>
+          <div className="grid grid-cols-1 gap-6">
+            {bundles.map((p) => <ProductCard key={p.id} product={p} onClick={() => setSelectedProduct(p)} />)}
           </div>
         </div>
       </div>
@@ -496,6 +507,79 @@ export default function HardwareCatalog() {
 // ProductCard
 // ─────────────────────────────────────────────────────────────
 function ProductCard({ product, onClick }: { product: Product; onClick: () => void }) {
+  const isBundle = product.type === "bundle";
+
+  if (isBundle) {
+    return (
+      <motion.div
+        layoutId={`card-container-${product.id}`}
+        onClick={onClick}
+        whileHover={{ y: -6, scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+        transition={{ type: "spring", stiffness: 280, damping: 22 }}
+        className="p-6 md:p-8 flex flex-col md:flex-row gap-8 cursor-pointer group glass-card relative overflow-hidden"
+      >
+        {/* Badge */}
+        {product.badge && (
+          <div className="absolute top-4 left-4 z-10 px-2.5 py-1 rounded-full bg-[#00f2ff] text-black text-[9px] font-black uppercase tracking-widest">
+            {product.badge}
+          </div>
+        )}
+
+        {/* Image side */}
+        <div className="relative w-full md:w-[320px] h-[220px] rounded-2xl overflow-hidden bg-white/5 border border-white/10 flex-shrink-0 flex items-center justify-center">
+          {/* Subtle grid pattern background */}
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#00f2ff_1px,transparent_1px)] [background-size:16px_16px]" />
+          <motion.div layoutId={`image-${product.id}`} className="relative w-48 h-48">
+            <Image
+              src={product.image}
+              alt={product.name}
+              fill
+              className="object-contain drop-shadow-2xl group-hover:scale-105 transition-transform duration-700 ease-out"
+            />
+          </motion.div>
+        </div>
+
+        {/* Info side */}
+        <div className="flex-1 flex flex-col justify-between self-stretch py-1">
+          <div>
+            <p className="text-gray-500 font-bold text-[10px] tracking-[0.2em] uppercase mb-2">{product.series}</p>
+            <motion.h4 layoutId={`title-${product.id}`} className="text-2xl md:text-3xl font-black tracking-tight mb-3 text-white">
+              {product.name}
+            </motion.h4>
+            <p className="text-gray-400 text-sm leading-relaxed mb-5 max-w-2xl">{product.description}</p>
+            
+            {/* Bundle contents as pill badges */}
+            {product.bundleContents && (
+              <div className="flex flex-wrap gap-2.5 mb-6">
+                {product.bundleContents.map((item) => (
+                  <span key={item} className="px-3 py-1.5 rounded-xl bg-[#00f2ff]/5 border border-[#00f2ff]/10 text-[10px] font-black text-[#00f2ff] uppercase tracking-wider">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between pt-5 border-t border-white/10 mt-auto">
+            <div className="flex items-baseline gap-2">
+              <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Bundle Price:</span>
+              <motion.span layoutId={`price-${product.id}`} className="text-3xl font-black text-white">
+                {product.price}
+              </motion.span>
+            </div>
+            <div className="flex items-center gap-3 text-xs font-black uppercase tracking-widest text-[#00f2ff] group-hover:text-white transition-colors">
+              <span>View Bundle Specs</span>
+              <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 group-hover:bg-[#00f2ff] group-hover:text-black group-hover:border-transparent text-white flex items-center justify-center transition-all duration-300">
+                <ChevronRight size={18} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       layoutId={`card-container-${product.id}`}
