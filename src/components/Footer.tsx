@@ -31,27 +31,42 @@ const SOCIALS = [
   { icon: Mail,          href: "#", label: "Email"      },
 ];
 
-const STATS = [
-  { value: "200+",    label: "Countries Served" },
-  { value: "$1.2B+",  label: "Assets Secured" },
-  { value: "99.9%",   label: "Uptime SLA" },
-  { value: "24/7",    label: "Expert Support" },
-];
+import { useTranslation } from "@/context/LanguageContext";
 
 export default function Footer() {
+  const { t, isRtl } = useTranslation();
+
+  const stats = [
+    { value: "200+",    label: t("footerStatsCountries") },
+    { value: "$1.2B+",  label: t("footerStatsSecured") },
+    { value: "99.9%",   label: t("footerStatsUptime") },
+    { value: "24/7",    label: t("footerStatsSupport") },
+  ];
+
   return (
-    <footer className="bg-[#030303] text-white border-t border-white/5">
+    <footer className="bg-[#030303] text-white border-t border-white/5" dir={isRtl ? "rtl" : "ltr"}>
 
       {/* ── CTA Band ───────────────────────────── */}
       <div className="border-b border-white/5">
         <div className="max-w-[1400px] mx-auto px-6 py-16 flex flex-col md:flex-row items-center justify-between gap-8">
           <div>
             <h2 className="text-3xl md:text-5xl font-black tracking-tighter uppercase leading-none mb-3">
-              Ready to Mine<br />
-              <span className="text-gray-600">At Scale?</span>
+              {isRtl ? (
+                <>
+                  جاهز للتعدين<br />
+                  <span className="text-gray-600">على نطاق واسع؟</span>
+                </>
+              ) : (
+                <>
+                  {t("footerCtaTitle").split(" ")[0]} {t("footerCtaTitle").split(" ")[1]} {t("footerCtaTitle").split(" ")[2]}<br />
+                  <span className="text-gray-600">
+                    {t("footerCtaTitle").split(" ").slice(3).join(" ")}
+                  </span>
+                </>
+              )}
             </h2>
             <p className="text-gray-500 text-sm max-w-sm">
-              Join 14,000+ miners already running on AppsMiner infrastructure.
+              {t("footerCtaDesc")}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 flex-shrink-0">
@@ -61,7 +76,7 @@ export default function Footer() {
               whileTap={{ scale: 0.97 }}
               className="px-8 py-4 bg-white text-black rounded-full text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#00f2ff] transition-colors"
             >
-              Get Started <ArrowUpRight size={14} />
+              {t("footerCtaGetStarted")} <ArrowUpRight size={14} />
             </motion.a>
             <motion.a
               href="#"
@@ -69,7 +84,7 @@ export default function Footer() {
               whileTap={{ scale: 0.97 }}
               className="px-8 py-4 glass-card-dark rounded-full text-[11px] font-black uppercase tracking-widest flex items-center gap-2 border border-white/10 hover:border-white/30 transition-colors"
             >
-              Book a Demo
+              {t("footerCtaBookDemo")}
             </motion.a>
           </div>
         </div>
@@ -78,7 +93,7 @@ export default function Footer() {
       {/* ── Stats Band ─────────────────────────── */}
       <div className="border-b border-white/5">
         <div className="max-w-[1400px] mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
-          {STATS.map((s) => (
+          {stats.map((s) => (
             <div key={s.label} className="text-center">
               <p className="text-2xl md:text-4xl font-black text-white tracking-tighter">{s.value}</p>
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-600 mt-1">{s.label}</p>
@@ -149,18 +164,18 @@ export default function Footer() {
       <div className="border-t border-white/5">
         <div className="max-w-[1400px] mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
 
-          {/* Full logo on white pill */}
+          {/* Icon logo on dark background */}
           <div className="flex items-center gap-4">
-            <div className="relative h-8 w-32 bg-white rounded-lg overflow-hidden">
+            <div className="relative w-9 h-9 flex-shrink-0">
               <Image
-                src="/Products/logo.png"
+                src="/Products/icon blue.png"
                 alt="AppsMiner"
                 fill
-                className="object-contain p-1.5"
+                className="object-contain"
               />
             </div>
-            <span className="text-gray-700 text-xs font-medium">
-              © {new Date().getFullYear()} AppsMiner. All rights reserved.
+            <span className="text-gray-600 text-xs font-medium">
+              © {new Date().getFullYear()} AppsMiner. {t("footerAllRightsReserved")}
             </span>
           </div>
 
@@ -168,7 +183,7 @@ export default function Footer() {
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 flex items-center gap-1">
-              <Zap size={10} className="text-[#00f2ff]" /> All Systems Operational
+              <Zap size={10} className="text-[#00f2ff]" /> {t("footerSystemsOperational")}
             </span>
           </div>
         </div>
