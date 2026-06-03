@@ -1,6 +1,6 @@
 export default function Features() {
   return (
-    <section className="bg-white py-32 text-black">
+    <section className="bg-transparent py-32 text-black">
       <div className="max-w-[1400px] mx-auto px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
           

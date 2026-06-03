@@ -4,10 +4,12 @@
   --color-primary: #00f2ff;
   --color-accent: #ffb300;
   --color-accent-light: #ffd54f;
+  --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --background: #ffffff;
+  /* Soft off-white to make glass cards pop */
+  --background: #f8f9fa;
   --foreground: #000000;
 }
 
@@ -21,32 +23,46 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  /* The font-family is now handled by Tailwind's font-sans utility on the body tag */
   overflow-x: hidden;
 }
 
-/* Brutalist / Clean Card Styles */
-.bento-card-light {
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 2rem;
-  overflow: hidden;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.04);
-  transition: all 500ms;
-}
-.bento-card-light:hover {
-  box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+/* Glassmorphism Utilities */
+.glass-panel {
+  background-color: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
 }
 
-.bento-card-dark {
-  background-color: #050505;
-  border: 1px solid rgba(255,255,255,0.1);
+.glass-card {
+  background-color: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 2rem;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+  transition: all 500ms;
+}
+.glass-card:hover {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+  background-color: rgba(255, 255, 255, 0.75);
+}
+
+.glass-card-dark {
+  background-color: rgba(5, 5, 5, 0.6);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 2rem;
   overflow: hidden;
   transition: all 500ms;
 }
-.bento-card-dark:hover {
-  border-color: rgba(255,255,255,0.2);
+.glass-card-dark:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(15, 15, 15, 0.7);
 }
 
 /* Hide scrollbar for tickers */

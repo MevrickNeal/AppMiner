@@ -21,7 +21,7 @@ export default function CryptoServices() {
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Trading House */}
-          <div className="bento-card-dark p-10 md:p-14 group">
+          <div className="glass-card-dark p-10 md:p-14 group">
             <Repeat size={40} className="text-white mb-10" />
             <h4 className="text-3xl font-black mb-4 tracking-tight">Crypto Trading House</h4>
             <p className="text-gray-400 mb-10 leading-relaxed font-medium">
@@ -47,7 +47,7 @@ export default function CryptoServices() {
           </div>
 
           {/* Hot/Cold Wallets */}
-          <div className="bento-card-dark p-10 md:p-14 group">
+          <div className="glass-card-dark p-10 md:p-14 group">
             <Wallet size={40} className="text-white mb-10" />
             <h4 className="text-3xl font-black mb-4 tracking-tight">Hybrid Wallet Services</h4>
             <p className="text-gray-400 mb-10 leading-relaxed font-medium">

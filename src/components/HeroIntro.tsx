@@ -4,13 +4,13 @@ import { motion } from "framer-motion";
 
 export default function HeroIntro() {
   return (
-    <div className="relative min-h-[60vh] flex flex-col items-center justify-center pt-20 bg-white pb-10">
+    <div className="relative min-h-[60vh] flex flex-col items-center justify-center pt-20 bg-transparent pb-10">
       <div className="max-w-[1400px] mx-auto px-6 text-center z-10">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, ease: "easeOut" }}
-          className="inline-block mb-6 px-4 py-1.5 rounded-full border border-gray-200 bg-white shadow-sm"
+          className="inline-block mb-6 px-4 py-1.5 rounded-full glass-panel"
         >
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black">
             The Next Generation

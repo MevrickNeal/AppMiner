@@ -108,7 +108,7 @@ export default function HardwareCatalog() {
   const bundles = products.filter(p => p.type === "bundle");
 
   return (
-    <section className="py-32 bg-white text-black relative z-20 rounded-t-[3rem] -mt-10">
+    <section className="py-32 relative z-20 rounded-t-[3rem] -mt-10">
       <div className="max-w-[1400px] mx-auto px-6">
         
         <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
@@ -179,9 +179,9 @@ function ProductCard({ product, onClick }: { product: Product, onClick: () => vo
       whileHover={{ y: -15, scale: 1.02, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.15)" }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className="p-8 flex flex-col cursor-pointer group bg-white border border-gray-100 rounded-[2rem] h-full shadow-sm"
+      className="p-8 flex flex-col cursor-pointer group glass-card h-full"
     >
-      <div className="bg-gray-50 rounded-[1.5rem] p-8 mb-8 flex-1 flex items-center justify-center min-h-[250px] relative overflow-hidden">
+      <div className="bg-white/40 rounded-[1.5rem] p-8 mb-8 flex-1 flex items-center justify-center min-h-[250px] relative overflow-hidden backdrop-blur-sm border border-white/50">
         <motion.div layoutId={`image-${product.id}`} className="relative w-full h-full flex items-center justify-center">
            <Image src={product.image} alt={product.name} fill className="object-contain max-h-[200px] drop-shadow-xl group-hover:scale-110 transition-transform duration-700 ease-out" />
         </motion.div>
@@ -228,7 +228,7 @@ function ProductModal({ product, onClose }: { product: Product, onClose: () => v
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 pointer-events-none">
         <motion.div 
           layoutId={`card-container-${product.id}`}
-          className="bg-white w-full max-w-6xl h-[90vh] overflow-y-auto rounded-[2rem] shadow-2xl pointer-events-auto relative border border-gray-200 flex flex-col md:flex-row"
+          className="glass-card w-full max-w-6xl h-[90vh] overflow-y-auto pointer-events-auto relative flex flex-col md:flex-row"
         >
           <button 
             onClick={onClose}
@@ -238,7 +238,7 @@ function ProductModal({ product, onClose }: { product: Product, onClose: () => v
           </button>
 
           {/* Large View of the Product */}
-          <div className="w-full md:w-1/2 p-12 bg-gray-50 flex items-center justify-center relative">
+          <div className="w-full md:w-1/2 p-12 bg-white/20 backdrop-blur-md flex items-center justify-center relative border-r border-white/30">
              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-gray-100/50 mix-blend-multiply" />
              <motion.div layoutId={`image-${product.id}`} className="w-full h-full relative z-10 flex items-center justify-center">
                 <Image src={product.image} alt={product.name} fill className="object-contain drop-shadow-2xl scale-125 md:scale-150" />

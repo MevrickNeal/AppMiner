@@ -93,17 +93,17 @@ export default function HeroSection() {
   const caption3Y = useTransform(scrollYProgress, [0.65, 0.75], [50, 0]);
 
   return (
-    <div ref={containerRef} className="relative h-[600vh] bg-white">
+    <div ref={containerRef} className="relative h-[600vh]">
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         {/* Canvas */}
-        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full mix-blend-multiply" />
         
         {/* Captions Overlay */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center lg:justify-start lg:pl-32">
           
           <motion.div 
             style={{ opacity: caption1Opacity, y: caption1Y }}
-            className="absolute bento-card-light p-8 max-w-sm"
+            className="absolute glass-panel rounded-3xl p-8 max-w-sm"
           >
             <h3 className="text-2xl font-black text-black mb-2 tracking-tighter">Precision Engineering</h3>
             <p className="text-gray-500 font-medium text-sm leading-relaxed">Every component is machined to sub-millimeter tolerances, ensuring maximum thermal dissipation and continuous peak performance.</p>
@@ -111,7 +111,7 @@ export default function HeroSection() {
 
           <motion.div 
             style={{ opacity: caption2Opacity, y: caption2Y }}
-            className="absolute bento-card-light p-8 max-w-sm lg:left-auto lg:right-32"
+            className="absolute glass-panel rounded-3xl p-8 max-w-sm lg:left-auto lg:right-32"
           >
             <h3 className="text-2xl font-black text-black mb-2 tracking-tighter">Quantum Hashrate</h3>
             <p className="text-gray-500 font-medium text-sm leading-relaxed">Our proprietary ASICs break the boundaries of conventional silicon, delivering up to 200 TH/s while maintaining 15 J/TH efficiency.</p>
@@ -119,7 +119,7 @@ export default function HeroSection() {
 
           <motion.div 
             style={{ opacity: caption3Opacity, y: caption3Y }}
-            className="absolute bento-card-light p-8 max-w-sm"
+            className="absolute glass-panel rounded-3xl p-8 max-w-sm"
           >
             <h3 className="text-2xl font-black text-black mb-2 tracking-tighter">Immutable Architecture</h3>
             <p className="text-gray-500 font-medium text-sm leading-relaxed">Directly integrated with cold storage protocols, ensuring your mined assets are instantly secured offline without intermediate pool risk.</p>
