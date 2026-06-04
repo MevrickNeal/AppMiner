@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useTranslation } from "@/context/LanguageContext";
-import { useTranslation } from "@/context/LanguageContext";
 import { CATALOG_I18N } from "@/locales/catalog";
 import { supabase } from "@/lib/supabase";
 
