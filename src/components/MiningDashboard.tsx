@@ -494,8 +494,6 @@ export default function MiningDashboard() {
           </div>
         </div>
 
-        </div>
-
         {/* Third Row: Connected Nodes */}
         <div className="mt-8">
           <h4 className="text-xl font-black mb-6 flex items-center gap-2 text-white/80 uppercase tracking-widest">
