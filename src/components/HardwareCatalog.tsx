@@ -11,7 +11,9 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTranslation } from "@/context/LanguageContext";
 import { CATALOG_I18N } from "@/locales/catalog";
+import { supabase } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────
 type SpecGroup = { label: string; rows: { key: string; value: string; highlight?: boolean }[] };
@@ -898,11 +900,11 @@ function ProductModal({ product, onClose, locLabels }: { product: Product; onClo
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 bg-black/85 backdrop-blur-lg z-50"
+        className="fixed inset-0 bg-black/85 backdrop-blur-lg z-[100]"
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 md:p-6 pointer-events-none">
+      <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 md:p-6 pointer-events-none">
         <motion.div
           layoutId={`card-container-${product.id}`}
           className="glass-card w-full max-w-6xl max-h-[94vh] overflow-hidden pointer-events-auto relative flex flex-col"
@@ -1101,12 +1103,21 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
   const [processing, setProcessing] = useState(false);
   const [step, setStep] = useState(0);
 
-  const handleCheckout = (e: React.FormEvent) => {
+  const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!billingName || !billingEmail) {
       alert("Please fill in billing details.");
       return;
     }
+
+    // Check auth
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      alert("You must be logged in to make a purchase. Redirecting to login...");
+      router.push("/login");
+      return;
+    }
+
     setProcessing(true);
     setStep(1);
 
@@ -1117,34 +1128,48 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
         setStep(3);
         setTimeout(() => {
           setStep(4);
-          setTimeout(() => {
+          setTimeout(async () => {
             setStep(5);
-            setTimeout(() => {
-              // Create the purchased node object
-              const newPurchase = {
-                id: "node_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
-                productId: product.id,
-                productName: product.name,
-                hashrate: product.hashrate || (product.id === "starter-kit" ? "2.15 TH/s" : "50 TH/s"),
-                power: product.id === "starter-kit" ? "185 W" : (product.id === "t200" ? "5,000 W" : product.id === "f100" ? "2,800 W" : product.id === "f50" ? "1,500 W" : product.id === "mini" ? "45 W" : product.id === "nano" ? "10 W" : "5 W"),
-                price: product.price,
-                region: region.split(" (")[0],
-                date: new Date().toLocaleDateString(),
-                status: "online"
-              };
+            try {
+              // Insert purchase
+              const { data: purchase, error: purchaseError } = await supabase
+                .from("purchases")
+                .insert({
+                  user_id: session.user.id,
+                  product_id: product.id,
+                  product_name: product.name,
+                  price: product.price,
+                  status: "completed"
+                })
+                .select()
+                .single();
+                
+              if (purchaseError) throw purchaseError;
 
-              // Save to localStorage
-              const existingStr = localStorage.getItem("sb-mock-purchases");
-              const existing = existingStr ? JSON.parse(existingStr) : [];
-              existing.push(newPurchase);
-              localStorage.setItem("sb-mock-purchases", JSON.stringify(existing));
-              localStorage.setItem("force-demo-mode", "true");
+              // Insert node
+              const { error: nodeError } = await supabase
+                .from("nodes")
+                .insert({
+                  user_id: session.user.id,
+                  purchase_id: purchase.id,
+                  node_name: product.name + " Node",
+                  hashrate: product.hashrate || (product.id === "starter-kit" ? "2.15 TH/s" : "50 TH/s"),
+                  power: product.id === "starter-kit" ? "185 W" : (product.id === "t200" ? "5,000 W" : product.id === "f100" ? "2,800 W" : product.id === "f50" ? "1,500 W" : product.id === "mini" ? "45 W" : product.id === "nano" ? "10 W" : "5 W"),
+                  region: region.split(" (")[0],
+                  status: "online"
+                });
+
+              if (nodeError) throw nodeError;
 
               // Close modal and redirect
               onClose();
-              router.push(`/login?checkout_success=true&email=${encodeURIComponent(billingEmail)}`);
-            }, 1000);
-          }, 800);
+              router.push(`/dashboard`);
+            } catch (error: any) {
+              console.error(error);
+              alert("Checkout failed: " + error.message);
+              setProcessing(false);
+            }
+          }, 1000);
         }, 800);
       }, 800);
     }, 800);

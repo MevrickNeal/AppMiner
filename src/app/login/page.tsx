@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Globe, Lock, Mail, Eye, EyeOff, ChevronDown, CheckCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Globe, Lock, Mail, Eye, EyeOff, ChevronDown, CheckCircle, AlertTriangle, User, Hash, MapPin, Phone, Calendar, Key, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation, LANGUAGES, LanguageCode } from "@/context/LanguageContext";
 import { supabase } from "@/lib/supabase";
@@ -20,16 +20,28 @@ export default function Login() {
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  
+  // Extended signup fields
+  const [username, setUsername] = useState("");
+  const [referenceCode, setReferenceCode] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [country, setCountry] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dob, setDob] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [transactionPin, setTransactionPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [securityKey, setSecurityKey] = useState("");
+  const [confirmKey, setConfirmKey] = useState("");
+
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
   const [mounted, setMounted] = useState(false);
-  const [forceDemo, setForceDemo] = useState(false);
-  const [showDemoFallback, setShowDemoFallback] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setForceDemo(localStorage.getItem("force-demo-mode") === "true");
 
     // Capture success checkout parameters
     if (typeof window !== "undefined") {
@@ -50,42 +62,6 @@ export default function Login() {
     setLoading(true);
     setErrorMsg("");
     setSuccessMsg("");
-    setShowDemoFallback(false);
-
-    // Check if Supabase keys are empty or placeholder values
-    const dbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-    const isMockMode = forceDemo || !dbUrl || dbUrl.includes("placeholder-project") || dbUrl === "";
-
-    if (isMockMode) {
-      // Local Mock Demo Mode (helps users preview the app without configuration)
-      setTimeout(() => {
-        if (authMode === "signin") {
-          if (password.length < 6) {
-            setErrorMsg("Password must be at least 6 characters.");
-            setLoading(false);
-          } else {
-            const mockSession = {
-              user: { email: email },
-              access_token: "mock-demo-token",
-              expires_at: Math.floor(Date.now() / 1000) + 3600
-            };
-            localStorage.setItem("sb-placeholder-project-auth-token", JSON.stringify(mockSession));
-            setSuccessMsg("Logged in (Local Demo Mode)!");
-            setTimeout(() => {
-              router.push("/dashboard");
-            }, 800);
-          }
-        } else {
-          setSuccessMsg("Account created successfully (Local Demo Mode)! Redirecting to Sign In...");
-          setTimeout(() => {
-            setAuthMode("signin");
-            setSuccessMsg("");
-            setLoading(false);
-          }, 1500);
-        }
-      }, 1000);
-      return;
-    }
 
     try {
       if (authMode === "signin") {
@@ -95,34 +71,55 @@ export default function Login() {
         });
 
         if (error) {
-          if (error.message === "Failed to fetch" || error.message.toLowerCase().includes("fetch") || error.message.toLowerCase().includes("network")) {
-            setErrorMsg("Connection failed: Failed to fetch Supabase endpoint. Verify your internet connection or .env.local configuration.");
-            setShowDemoFallback(true);
-          } else {
-            setErrorMsg(error.message);
-          }
+          setErrorMsg(error.message);
         } else {
           router.push("/dashboard");
         }
       } else {
+        // Basic validation for signup
+        if (password !== confirmPassword) {
+          setErrorMsg("Passwords do not match.");
+          setLoading(false);
+          return;
+        }
+        if (transactionPin !== confirmPin) {
+          setErrorMsg("Transaction PINs do not match.");
+          setLoading(false);
+          return;
+        }
+        if (securityKey !== confirmKey) {
+          setErrorMsg("Security Keys do not match.");
+          setLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              username,
+              reference_code: referenceCode,
+              first_name: firstName,
+              last_name: lastName,
+              country,
+              phone_number: phone,
+              date_of_birth: dob,
+              transaction_pin: transactionPin,
+              security_key: securityKey
+            }
+          }
         });
 
         if (error) {
-          if (error.message === "Failed to fetch" || error.message.toLowerCase().includes("fetch") || error.message.toLowerCase().includes("network")) {
-            setErrorMsg("Connection failed: Failed to fetch Supabase endpoint. Verify your internet connection or .env.local configuration.");
-            setShowDemoFallback(true);
-          } else {
-            setErrorMsg(error.message);
-          }
+          setErrorMsg(error.message);
         } else {
           if (data.session) {
             setSuccessMsg(t("authSignUpSuccess"));
             setTimeout(() => router.push("/dashboard"), 1500);
           } else {
             setSuccessMsg("Registration successful! Please check your email for a confirmation link.");
+            // Optional: reset fields
             setEmail("");
             setPassword("");
             setAuthMode("signin");
@@ -130,33 +127,23 @@ export default function Login() {
         }
       }
     } catch (err: any) {
-      const isFetchErr = err?.message === "Failed to fetch" || String(err).toLowerCase().includes("fetch") || String(err).toLowerCase().includes("network");
-      if (isFetchErr) {
-        setErrorMsg("Connection failed: Failed to fetch Supabase endpoint. Verify your internet connection or .env.local configuration.");
-        setShowDemoFallback(true);
-      } else {
-        setErrorMsg("An unexpected connection error occurred.");
-      }
+      setErrorMsg("An unexpected connection error occurred.");
       console.error(err);
     } finally {
       setLoading(false);
     }
   }
 
-  // Detect mock status to show indicator
-  const dbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const isMockMode = forceDemo || !dbUrl || dbUrl.includes("placeholder-project") || dbUrl === "";
-
   return (
-    <div className="min-h-screen bg-[#030303] flex flex-col justify-center items-center relative overflow-hidden" dir={isRtl ? "rtl" : "ltr"}>
+    <div className="min-h-screen bg-[#030303] flex flex-col justify-center items-center relative overflow-hidden py-12" dir={isRtl ? "rtl" : "ltr"}>
 
       {/* Background glow */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
+      <div className="absolute inset-0 z-0 pointer-events-none fixed">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#001a33_0%,#030303_70%)]" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#00f2ff]/8 rounded-full blur-[140px]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-md px-6">
+      <div className={`relative z-10 w-full transition-all duration-500 px-6 ${authMode === "signup" ? "max-w-3xl" : "max-w-md"}`}>
 
         {/* Top bar */}
         <div className="mb-8 flex justify-between items-center">
@@ -213,7 +200,7 @@ export default function Login() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="glass-card p-10 border border-white/10 shadow-2xl"
+          className="glass-card p-6 md:p-10 border border-white/10 shadow-2xl"
         >
           {/* Logo + title */}
           <div className="text-center mb-8">
@@ -235,30 +222,9 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Demo Mode alert indicator */}
-          {mounted && isMockMode && (
-            <div className="p-3 mb-6 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase tracking-wider text-center flex flex-col items-center gap-1">
-              <span>⚠️ Local Demo Mode Active</span>
-              {forceDemo && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    localStorage.removeItem("force-demo-mode");
-                    setForceDemo(false);
-                    setErrorMsg("");
-                    setSuccessMsg("Switched back to live Supabase client. Retrying connection...");
-                    setTimeout(() => setSuccessMsg(""), 2000);
-                  }}
-                  className="text-[9px] text-[#00f2ff] underline font-bold uppercase mt-1 hover:text-white transition-colors"
-                >
-                  Switch back to live Supabase Connection
-                </button>
-              )}
-            </div>
-          )}
 
           {/* Tab Mode switch */}
-          <div className="flex bg-white/5 border border-white/5 rounded-xl p-1 mb-6">
+          <div className="flex bg-white/5 border border-white/5 rounded-xl p-1 mb-6 max-w-md mx-auto">
             <button
               type="button"
               onClick={() => {
@@ -294,28 +260,10 @@ export default function Login() {
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="p-4 mb-5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold flex flex-col gap-2.5"
+                className="p-4 mb-5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold flex items-center gap-2 max-w-md mx-auto"
               >
-                <div className="flex items-center gap-2">
-                  <AlertTriangle size={16} className="flex-shrink-0" />
-                  <span>{errorMsg}</span>
-                </div>
-                {showDemoFallback && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      localStorage.setItem("force-demo-mode", "true");
-                      setForceDemo(true);
-                      setErrorMsg("");
-                      setShowDemoFallback(false);
-                      setSuccessMsg("Switched to Local Demo Mode. You can now use any dummy credentials.");
-                      setTimeout(() => setSuccessMsg(""), 3000);
-                    }}
-                    className="w-full py-2 bg-amber-500 text-black text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-amber-400 transition-colors shadow-lg"
-                  >
-                    Activate Local Demo Mode
-                  </button>
-                )}
+                <AlertTriangle size={16} className="flex-shrink-0" />
+                <span>{errorMsg}</span>
               </motion.div>
             )}
 
@@ -324,7 +272,7 @@ export default function Login() {
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="p-4 mb-5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center gap-2"
+                className="p-4 mb-5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center gap-2 max-w-md mx-auto"
               >
                 <CheckCircle size={16} className="flex-shrink-0" />
                 <span>{successMsg}</span>
@@ -333,8 +281,117 @@ export default function Login() {
           </AnimatePresence>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email */}
+          <form onSubmit={handleSubmit} className={`space-y-5 ${authMode === "signup" ? "grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 space-y-0" : "max-w-md mx-auto"}`}>
+            
+            {/* Extended fields for signup */}
+            {authMode === "signup" && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">User Name</label>
+                  <div className="relative">
+                    <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type="text"
+                      required
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-4 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
+                      placeholder="Username"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Reference Code (Optional)</label>
+                  <div className="relative">
+                    <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type="text"
+                      value={referenceCode}
+                      onChange={(e) => setReferenceCode(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-4 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
+                      placeholder="Ref Code"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">First Name</label>
+                  <div className="relative">
+                    <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type="text"
+                      required
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-4 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
+                      placeholder="First Name"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Last Name</label>
+                  <div className="relative">
+                    <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type="text"
+                      required
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-4 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
+                      placeholder="Last Name"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Country</label>
+                  <div className="relative">
+                    <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type="text"
+                      required
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-4 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
+                      placeholder="Country"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Phone Number</label>
+                  <div className="relative">
+                    <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type="tel"
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-4 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
+                      placeholder="Phone"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Date of Birth</label>
+                  <div className="relative">
+                    <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type="date"
+                      required
+                      value={dob}
+                      onChange={(e) => setDob(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-4 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Email (Always shown) */}
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">
                 {t("authEmailLabel")}
@@ -352,7 +409,7 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Password */}
+            {/* Password (Always shown) */}
             <div className="space-y-2">
               <div className="flex justify-between items-center ml-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
@@ -384,23 +441,106 @@ export default function Login() {
               </div>
             </div>
 
+            {/* Confirm Password */}
+            {authMode === "signup" && (
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Confirm Password</label>
+                <div className="relative">
+                  <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                  <input
+                    type={showPass ? "text" : "password"}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-12 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Transaction PIN and Security Key */}
+            {authMode === "signup" && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Transaction PIN</label>
+                  <div className="relative">
+                    <Key size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type={showPass ? "text" : "password"}
+                      required
+                      value={transactionPin}
+                      onChange={(e) => setTransactionPin(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-12 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
+                      placeholder="PIN"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Confirm PIN</label>
+                  <div className="relative">
+                    <Key size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type={showPass ? "text" : "password"}
+                      required
+                      value={confirmPin}
+                      onChange={(e) => setConfirmPin(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-12 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
+                      placeholder="PIN"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Security Key</label>
+                  <div className="relative">
+                    <Shield size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type={showPass ? "text" : "password"}
+                      required
+                      value={securityKey}
+                      onChange={(e) => setSecurityKey(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-12 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
+                      placeholder="Security Key"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Confirm Security Key</label>
+                  <div className="relative">
+                    <Shield size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                    <input
+                      type={showPass ? "text" : "password"}
+                      required
+                      value={confirmKey}
+                      onChange={(e) => setConfirmKey(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-12 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
+                      placeholder="Security Key"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Submit */}
-            <motion.button
-              type="submit"
-              disabled={loading}
-              whileHover={{ scale: loading ? 1 : 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full py-4 bg-[#00f2ff] text-black font-black uppercase tracking-[0.2em] text-sm rounded-xl transition-all shadow-[0_10px_30px_rgba(0,242,255,0.2)] mt-4 disabled:opacity-60 flex items-center justify-center gap-3"
-            >
-              {loading ? (
-                <>
-                  <span className="w-4 h-4 rounded-full border-2 border-black/30 border-t-black animate-spin" />
-                  {authMode === "signin" ? "Authenticating…" : "Creating Account…"}
-                </>
-              ) : (
-                authMode === "signin" ? t("authSignIn") : t("authSignUp")
-              )}
-            </motion.button>
+            <div className={authMode === "signup" ? "md:col-span-2 mt-4" : "mt-4"}>
+              <motion.button
+                type="submit"
+                disabled={loading}
+                whileHover={{ scale: loading ? 1 : 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-4 bg-[#00f2ff] text-black font-black uppercase tracking-[0.2em] text-sm rounded-xl transition-all shadow-[0_10px_30px_rgba(0,242,255,0.2)] disabled:opacity-60 flex items-center justify-center gap-3"
+              >
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 rounded-full border-2 border-black/30 border-t-black animate-spin" />
+                    {authMode === "signin" ? "Authenticating…" : "Creating Account…"}
+                  </>
+                ) : (
+                  authMode === "signin" ? t("authSignIn") : t("authSignUp")
+                )}
+              </motion.button>
+            </div>
           </form>
 
           {/* Toggle link below button */}

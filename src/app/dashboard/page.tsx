@@ -323,80 +323,74 @@ export default function Dashboard() {
   const [systemActive, setSystemActive] = useState(true);
   const [revokedUsers, setRevokedUsers] = useState<string[]>([]);
   const [adminLogs, setAdminLogs] = useState<string[]>([]);
+  
+  // Real Admin Data
+  const [allProfiles, setAllProfiles] = useState<any[]>([]);
+  const [allNodes, setAllNodes] = useState<any[]>([]);
 
   const code = language.code;
   const l = DASH_LOCAL_I18N[code] || DASH_LOCAL_I18N.EN;
 
   const [mounted, setMounted] = useState(false);
-  const [isMockMode, setIsMockMode] = useState(true);
-  const [isSupabaseConfigured, setIsSupabaseConfigured] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const dbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
   useEffect(() => {
     setMounted(true);
-    const forceDemo = localStorage.getItem("force-demo-mode") === "true";
-    const isMock = forceDemo || !dbUrl || dbUrl.includes("placeholder-project") || dbUrl === "";
-    setIsMockMode(isMock);
-    setIsSupabaseConfigured(!isMock);
-  }, [dbUrl]);
+  }, []);
 
   useEffect(() => {
     async function checkUser() {
-      const forceDemo = localStorage.getItem("force-demo-mode") === "true";
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (session) {
+          setUserEmail(session.user?.email || "operator@appsminer.com");
+          
+          // Check if admin
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("is_admin")
+            .eq("id", session.user.id)
+            .single();
+            
+          if (profile?.is_admin) {
+            setIsAdmin(true);
 
-      if (!forceDemo) {
-        try {
-          // 1. Check live Supabase session
-          const { data: { session }, error } = await supabase.auth.getSession();
-          if (session) {
-            setUserEmail(session.user?.email || "operator@appsminer.com");
-            setLoading(false);
-            return;
+            // Fetch admin data
+            const [profilesRes, nodesRes] = await Promise.all([
+              supabase.from("profiles").select("*"),
+              supabase.from("nodes").select("*")
+            ]);
+
+            if (profilesRes.data) setAllProfiles(profilesRes.data);
+            if (nodesRes.data) setAllNodes(nodesRes.data);
           }
-        } catch (err) {
-          console.warn("Supabase session check failed, falling back to local storage session", err);
+          
+          setLoading(false);
+        } else {
+          router.push("/login");
         }
+      } catch (err) {
+        console.warn("Supabase session check failed", err);
+        router.push("/login");
       }
-
-      // 2. Check local storage mock session if supabase is not linked or in force demo mode
-      const mockSessionStr = localStorage.getItem("sb-placeholder-project-auth-token");
-      if (mockSessionStr) {
-        try {
-          const mockSession = JSON.parse(mockSessionStr);
-          if (mockSession && mockSession.user) {
-            setUserEmail(mockSession.user.email);
-            setLoading(false);
-            return;
-          }
-        } catch (e) {}
-      }
-
-      // Neither found, redirect to login
-      router.push("/login");
     }
     checkUser();
 
-    // Listen for auth state changes
-    const forceDemo = localStorage.getItem("force-demo-mode") === "true";
     let subscription: any = null;
 
-    if (!forceDemo) {
-      try {
-        const authRes = supabase.auth.onAuthStateChange((_event, session) => {
-          if (!session) {
-            const mockSessionStr = localStorage.getItem("sb-placeholder-project-auth-token");
-            if (!mockSessionStr) {
-              router.push("/login");
-            }
-          } else {
-            setUserEmail(session.user?.email || "operator@appsminer.com");
-          }
-        });
-        subscription = authRes.data?.subscription;
-      } catch (err) {
-        console.warn("Supabase auth state listener failed", err);
-      }
+    try {
+      const authRes = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!session) {
+          router.push("/login");
+        } else {
+          setUserEmail(session.user?.email || "operator@appsminer.com");
+        }
+      });
+      subscription = authRes.data?.subscription;
+    } catch (err) {
+      console.warn("Supabase auth state listener failed", err);
     }
 
     return () => {
@@ -410,14 +404,13 @@ export default function Dashboard() {
     try {
       await supabase.auth.signOut();
     } catch (e) {}
-    localStorage.removeItem("sb-placeholder-project-auth-token");
     router.push("/");
   };
 
   const user = {
     name: userEmail ? userEmail.split("@")[0].toUpperCase() : "OPERATOR",
     email: userEmail,
-    role: l.roleAdmin,
+    role: isAdmin ? l.roleAdmin : "Operator",
     joined: "June 2026",
     avatar: "/Products/icon blue.png"
   };
@@ -477,8 +470,6 @@ export default function Dashboard() {
     );
   }
 
-  // Detect mock status to show indicator
-  const isMockModeState = mounted && isMockMode;
 
   return (
     <div className="min-h-screen bg-[#030303] text-white flex flex-col lg:flex-row" dir={isRtl ? "rtl" : "ltr"}>
@@ -562,17 +553,19 @@ export default function Dashboard() {
           </button>
 
           {/* Admin tab visible only to administrators */}
-          <button
-            onClick={() => setActiveTab("admin")}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              activeTab === "admin" 
-                ? "bg-red-500 text-black shadow-[0_4px_15px_rgba(239,68,68,0.2)]" 
-                : "text-gray-500 hover:text-red-400 hover:bg-red-500/5"
-            }`}
-          >
-            <ShieldAlert size={14} />
-            {l.adminConsole}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab("admin")}
+              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                activeTab === "admin" 
+                  ? "bg-red-500 text-black shadow-[0_4px_15px_rgba(239,68,68,0.2)]" 
+                  : "text-gray-500 hover:text-red-400 hover:bg-red-500/5"
+              }`}
+            >
+              <ShieldAlert size={14} />
+              {l.adminConsole}
+            </button>
+          )}
         </nav>
 
         {/* Bottom actions */}
@@ -612,11 +605,7 @@ export default function Dashboard() {
           </div>
           
           <div className="flex items-center gap-3">
-            {isMockModeState && (
-              <span className="text-[9px] bg-amber-500/10 border border-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                Demo Mode
-              </span>
-            )}
+
             <div className={`h-2 w-2 rounded-full ${systemActive ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
               {systemActive ? l.networkOnline : "Offline Mode"}
@@ -651,7 +640,7 @@ export default function Dashboard() {
                 <div className="glass-card p-6 border border-white/10 relative overflow-hidden group sm:col-span-2 lg:col-span-1">
                   <div className="absolute top-0 left-0 h-1 bg-emerald-500 w-full transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
                   <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{t("dashActiveClusters")}</p>
-                  <h3 className="text-3xl font-black text-white">{systemActive ? "5 / 5 Systems" : "0 / 5 Systems"}</h3>
+                  <h3 className="text-3xl font-black text-white">{systemActive ? (isAdmin ? `${allNodes.length} / ${allNodes.length} Systems` : "5 / 5 Systems") : `0 / ${isAdmin ? allNodes.length : 5} Systems`}</h3>
                   <div className="mt-4 flex items-center gap-2 text-xs text-emerald-400 font-bold">
                     <span>{systemActive ? l.allOperational : "Emergency Stop Active"}</span>
                   </div>
@@ -835,13 +824,11 @@ export default function Dashboard() {
                       <div>
                         <p className="text-[9px] font-black uppercase text-gray-500 tracking-wider mb-1">{l.anonKeyLength}</p>
                         <p className="text-xs font-mono text-white">
-                          {isSupabaseConfigured ? "Connected (Live Client)" : "Placeholder Fallback"}
+                          Connected (Live Client)
                         </p>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                        isSupabaseConfigured ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"
-                      }`}>
-                        {isSupabaseConfigured ? "Linked" : "Local Dev"}
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400">
+                        Linked
                       </span>
                     </div>
                   </div>
@@ -859,38 +846,36 @@ export default function Dashboard() {
                   <table className="w-full text-left text-xs text-gray-400">
                     <thead>
                       <tr className="border-b border-white/5 text-[9px] uppercase tracking-widest font-black text-gray-500">
-                        <th className="pb-3 px-2">Operator Email</th>
+                        <th className="pb-3 px-2">Operator Identity</th>
                         <th className="pb-3 px-2">Role</th>
                         <th className="pb-3 px-2 text-center">Status</th>
                         <th className="pb-3 px-2 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {[
-                        { email: userEmail || "operator@appsminer.com", role: l.roleAdmin, status: l.activeStatus, static: true },
-                        { email: "miner_alpha@appsminer.net", role: "Cluster Operator", status: l.activeStatus, static: false },
-                        { email: "observer_029@appsminer.org", role: "Financial Auditor", status: l.idleStatus, static: false }
-                      ].map((op) => {
-                        const isRevoked = revokedUsers.includes(op.email);
+                      {allProfiles.length > 0 ? allProfiles.map((op) => {
+                        const isRevoked = revokedUsers.includes(op.id);
                         return (
-                          <tr key={op.email} className="border-b border-white/5 hover:bg-white/2 transition-colors">
-                            <td className="py-4 px-2 font-mono text-white font-medium">{op.email}</td>
-                            <td className="py-4 px-2 font-bold text-gray-500">{op.role}</td>
+                          <tr key={op.id} className="border-b border-white/5 hover:bg-white/2 transition-colors">
+                            <td className="py-4 px-2 font-mono text-white font-medium">
+                              {op.username || op.first_name || "Unknown Operator"}
+                            </td>
+                            <td className="py-4 px-2 font-bold text-gray-500">
+                              {op.is_admin ? l.roleAdmin : "Operator"}
+                            </td>
                             <td className="py-4 px-2 text-center">
                               <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
                                 isRevoked 
                                   ? "bg-red-500/20 text-red-500" 
-                                  : op.status === l.activeStatus 
-                                    ? "bg-emerald-500/10 text-emerald-400" 
-                                    : "bg-gray-500/10 text-gray-400"
+                                  : "bg-emerald-500/10 text-emerald-400"
                               }`}>
-                                {isRevoked ? l.revokedStatus : op.status}
+                                {isRevoked ? l.revokedStatus : l.activeStatus}
                               </span>
                             </td>
                             <td className="py-4 px-2 text-right">
-                              {!op.static && (
+                              {!op.is_admin && (
                                 <button
-                                  onClick={() => revokeUser(op.email)}
+                                  onClick={() => revokeUser(op.id)}
                                   disabled={isRevoked}
                                   className="text-[10px] font-black uppercase text-red-400 hover:text-red-500 disabled:opacity-30 disabled:hover:text-red-400 transition-colors"
                                 >
@@ -900,7 +885,13 @@ export default function Dashboard() {
                             </td>
                           </tr>
                         );
-                      })}
+                      }) : (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center text-gray-500">
+                            Loading operators...
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

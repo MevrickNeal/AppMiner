@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Activity, TrendingUp, Zap, Cpu, BarChart3, Hash } from "lucide-react";
 import { useTranslation } from "@/context/LanguageContext";
+import { supabase } from "@/lib/supabase";
 
 // Localized Dashboard Mappings
 const DASH_I18N: Record<string, any> = {
@@ -347,15 +348,30 @@ export default function MiningDashboard() {
     setEarningsData(generateEarningsData(labels.days));
     setLiveHashrate(initialHashrate[initialHashrate.length - 1]?.value ?? 180);
 
-    // Read local storage purchases
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("sb-mock-purchases");
-      if (saved) {
-        try {
-          setPurchasedNodes(JSON.parse(saved));
-        } catch (e) {}
+    // Fetch real nodes from Supabase
+    async function fetchNodes() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from("nodes")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false });
+
+      if (data && !error) {
+        const mappedNodes = data.map(n => ({
+          id: n.id,
+          productName: n.node_name,
+          hashrate: n.hashrate,
+          power: n.power,
+          region: n.region,
+          status: n.status
+        }));
+        setPurchasedNodes(mappedNodes);
       }
     }
+    fetchNodes();
   }, [code, labels.days]);
 
   // Push a new data point every 2s to simulate live feed
