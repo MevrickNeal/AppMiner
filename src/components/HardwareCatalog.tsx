@@ -903,10 +903,10 @@ function ProductModal({ product, onClose, locLabels }: { product: Product; onClo
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 md:p-6 pointer-events-none">
+      <div className="fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-6 pointer-events-none">
         <motion.div
           layoutId={`card-container-${product.id}`}
-          className="glass-card w-full max-w-6xl max-h-[94vh] overflow-hidden pointer-events-auto relative flex flex-col"
+          className="glass-card w-full max-w-6xl h-[90vh] md:max-h-[94vh] !rounded-t-[2rem] !rounded-b-none md:!rounded-3xl mt-auto md:mt-0 overflow-hidden pointer-events-auto relative flex flex-col"
         >
           {/* Close */}
           <button
@@ -923,7 +923,7 @@ function ProductModal({ product, onClose, locLabels }: { product: Product; onClo
             <div className="w-full md:w-[40%] flex flex-col border-r border-white/10 flex-shrink-0 bg-black/20">
 
               {/* Image area */}
-              <div className="relative flex-1 min-h-[240px] md:min-h-0 bg-white/3 flex items-center justify-center p-8">
+              <div className="relative flex-none h-[260px] md:h-auto md:flex-1 bg-white/3 flex items-center justify-center p-8">
                 {/* Glow */}
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,242,255,0.06)_0%,transparent_70%)]" />
                 <motion.div layoutId={`image-${product.id}`} className="relative w-full h-full min-h-[200px]">

@@ -2,15 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { 
   LayoutDashboard, Wallet, Cpu, LogOut, Shield, 
   Settings, Bell, ChevronRight, User, Terminal, Loader2,
-  ShieldAlert, UserX, Activity, Database, AlertTriangle, Play, Square
+  ShieldAlert, UserX, Activity, Database, AlertTriangle, Play, Square,
+  ShoppingBag, LifeBuoy
 } from "lucide-react";
 import MiningDashboard from "@/components/MiningDashboard";
 import WalletServices from "@/components/WalletServices";
+import OrderHistoryView from "@/components/dashboard/OrderHistoryView";
+import SupportView from "@/components/dashboard/SupportView";
 import { useTranslation } from "@/context/LanguageContext";
 import { supabase } from "@/lib/supabase";
 
@@ -28,6 +32,8 @@ const DASH_LOCAL_I18N: Record<string, Record<string, string>> = {
     log2: "HASH NODE #3 AUTOSCALED. LOAD: 89.2% EFFICIENCY: 99.8%",
     log3: "AUTO-SWEEP RULE CHECK: BALANCES ARE BELOW TRANSITION THRESHOLD",
     log4: "CLIENT REQUESTS TRANSLATION ENGINE TO DEPLOY OVER MULTI-LOCALE PATHS",
+    dashPurchases: "Order History",
+    dashSupport: "Support",
     operatorPreferences: "Operator Preferences",
     twoFactorAuth: "Two-Factor Authentication (2FA)",
     twoFactorAuthDesc: "Requires a security key on every authentication request.",
@@ -314,9 +320,17 @@ const DASH_LOCAL_I18N: Record<string, Record<string, string>> = {
 export default function Dashboard() {
   const router = useRouter();
   const { language, t, isRtl } = useTranslation();
-  const [activeTab, setActiveTab] = useState<"overview" | "mining" | "wallet" | "settings" | "admin">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "mining" | "wallet" | "settings" | "admin" | "purchases" | "support">("overview");
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState("");
+
+  const navItems = [
+    { id: "overview", label: t("navOverview"), icon: LayoutDashboard },
+    { id: "mining", label: "Mining", icon: Cpu },
+    { id: "wallet", label: "Wallet", icon: Wallet },
+    { id: "purchases", label: "Orders", icon: ShoppingBag },
+    { id: "support", label: "Support", icon: LifeBuoy },
+  ];
 
   // Interactive Admin Dashboard States
   const [overclocked, setOverclocked] = useState(false);
@@ -472,9 +486,9 @@ export default function Dashboard() {
 
 
   return (
-    <div className="min-h-screen bg-[#030303] text-white flex flex-col lg:flex-row" dir={isRtl ? "rtl" : "ltr"}>
-      {/* Sidebar Navigation */}
-      <aside className="w-full lg:w-80 bg-[#070707] border-b lg:border-b-0 lg:border-r border-white/5 flex flex-col p-6 gap-8 z-20">
+    <div className="min-h-screen bg-[#030303] text-white flex flex-col lg:flex-row pb-20 lg:pb-0 overflow-x-hidden" dir={isRtl ? "rtl" : "ltr"}>
+      {/* Sidebar Navigation (Desktop) */}
+      <aside className="hidden lg:flex w-80 bg-[#070707] border-r border-white/5 flex-col p-6 gap-8 z-20 h-screen sticky top-0">
         {/* Brand Header */}
         <div className="flex items-center gap-3">
           <div className="relative w-9 h-9">
@@ -552,6 +566,30 @@ export default function Dashboard() {
             {t("dashSettings")}
           </button>
 
+          <button
+            onClick={() => setActiveTab("purchases")}
+            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              activeTab === "purchases" 
+                ? "bg-[#00f2ff] text-black" 
+                : "text-gray-500 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <ShoppingBag size={14} />
+            {l.dashPurchases || "Order History"}
+          </button>
+
+          <button
+            onClick={() => setActiveTab("support")}
+            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              activeTab === "support" 
+                ? "bg-[#00f2ff] text-black" 
+                : "text-gray-500 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <LifeBuoy size={14} />
+            {l.dashSupport || "Support"}
+          </button>
+
           {/* Admin tab visible only to administrators */}
           {isAdmin && (
             <button
@@ -597,6 +635,8 @@ export default function Dashboard() {
               {activeTab === "mining" && t("dashMiningProgress")}
               {activeTab === "wallet" && t("dashWalletStatus")}
               {activeTab === "settings" && t("dashSettings")}
+              {activeTab === "purchases" && (l.dashPurchases || "Order History")}
+              {activeTab === "support" && (l.dashSupport || "Support")}
               {activeTab === "admin" && l.adminConsole}
             </h1>
             <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wider mt-0.5">
@@ -747,6 +787,18 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === "purchases" && (
+            <div className="space-y-6">
+              <OrderHistoryView />
+            </div>
+          )}
+
+          {activeTab === "support" && (
+            <div className="space-y-6">
+              <SupportView />
             </div>
           )}
 
@@ -918,6 +970,35 @@ export default function Dashboard() {
           )}
         </div>
       </main>
+
+      {/* Bottom Navigation (Mobile) */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#0a0a0a]/90 backdrop-blur-xl border-t border-white/10 z-[100] px-4 pb-safe">
+        <div className="h-full max-w-md mx-auto flex items-center justify-between">
+          {navItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id as any)}
+                className={`flex flex-col items-center justify-center w-16 h-12 rounded-xl transition-all ${
+                  isActive ? "text-[#00f2ff]" : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                <div className="relative">
+                  <item.icon size={22} className={isActive ? "drop-shadow-[0_0_8px_rgba(0,242,255,0.5)]" : ""} />
+                  {isActive && (
+                    <motion.div
+                      layoutId="mobile-nav-indicator"
+                      className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#00f2ff]"
+                    />
+                  )}
+                </div>
+                <span className="text-[10px] mt-1 font-bold">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
