@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingCart, BarChart2, Zap, ChevronRight, X, Cpu,
   Thermometer, Weight, Wifi, Volume2, Box, Activity,
-  Shield, Clock, Package
+  Shield, Clock, Package, Loader2, CheckCircle, ArrowLeft,
+  CreditCard, Globe, Mail, User
 } from "lucide-react";
 import Image from "next/image";
 import { useTranslation } from "@/context/LanguageContext";
+import { CATALOG_I18N } from "@/locales/catalog";
 
 // ─── Types ────────────────────────────────────────────────────
 type SpecGroup = { label: string; rows: { key: string; value: string; highlight?: boolean }[] };
@@ -425,36 +428,269 @@ const GROUP_ICONS: Record<string, React.ElementType> = {
   "Bundle Value":               Shield,
 };
 
+const CHECKOUT_I18N: Record<string, any> = {
+  EN: {
+    checkoutHeader: "Sandbox Checkout",
+    hostingRegion: "Hosting Center Node Location",
+    paymentMethod: "Payment Method (Sandbox)",
+    billingName: "Billing Full Name",
+    billingEmail: "Operator Email Address",
+    sandboxAlertTitle: "Sandbox Simulation Mode",
+    sandboxAlertDesc: "AppsMiner is currently in network sandbox phase. No real money will be charged. Completing this order will instantly link this virtual device to your operator dashboard.",
+    processPaymentBtn: "Process Sandbox Payment",
+    successRedirectMsg: "Payment Processed! Initializing node telemetry...",
+    stage1: "Establishing secure blockchain gateway...",
+    stage2: "Minting virtual hardware license token...",
+    stage3: "Configuring stratum mining credentials...",
+    stage4: "Connecting node cluster to AppsMiner network...",
+    stage5: "Completed! Redirecting to secure registration...",
+    iceland: "Reykjavik, Iceland (35ms)",
+    finland: "Helsinki, Finland (42ms)",
+    sweden: "Luleå, Sweden (38ms)",
+    creditCard: "Simulated Credit Card",
+    bitcoin: "Bitcoin Testnet Wallet",
+    usdt: "USDT Sandbox Address",
+    namePlaceholder: "e.g. John Doe",
+    emailPlaceholder: "e.g. john@example.com",
+    orderSummary: "Order Summary",
+    product: "Product",
+    price: "Price",
+    sandboxFree: "SIMULATED PAYMENT (FREE)",
+    backBtn: "Back to Specs"
+  },
+  AR: {
+    checkoutHeader: "إتمام الشراء التجريبي (صندوق الرمل)",
+    hostingRegion: "موقع عقدة مركز الاستضافة",
+    paymentMethod: "طريقة الدفع (تجريبي)",
+    billingName: "الاسم الكامل للمشغل",
+    billingEmail: "عنوان البريد الإلكتروني للمشغل",
+    sandboxAlertTitle: "وضع محاكاة صندوق الرمل",
+    sandboxAlertDesc: "AppsMiner حاليًا في مرحلة اختبار الشبكة. لن يتم خصم أي أموال حقيقية. إن إتمام هذا الطلب سيربط هذا الجهاز الافتراضي مباشرة بلوحة تحكم المشغل الخاصة بك.",
+    processPaymentBtn: "معالجة الدفع التجريبي",
+    successRedirectMsg: "تمت معالجة الدفع! بدء تشغيل القياس عن بعد للعقدة...",
+    stage1: "إنشاء بوابة بلوكشين آمنة...",
+    stage2: "صك رمز ترخيص الأجهزة الافتراضية...",
+    stage3: "تكوين بيانات اعتماد تعدين stratum...",
+    stage4: "توصيل مجموعة العقد بشبكة AppsMiner...",
+    stage5: "اكتمل! إعادة التوجيه إلى التسجيل الآمن...",
+    iceland: "ريكيافيك، أيسلندا (٣٥ مللي ثانية)",
+    finland: "هلسنكي، فنلندا (٤٢ مللي ثانية)",
+    sweden: "لوليو، السويد (٣٨ مللي ثانية)",
+    creditCard: "بطاقة ائتمان محاكاة",
+    bitcoin: "محفظة اختبار البيتكوين",
+    usdt: "عنوان USDT التجريبي",
+    namePlaceholder: "مثال: جون دو",
+    emailPlaceholder: "مثال: john@example.com",
+    orderSummary: "ملخص الطلب",
+    product: "المنتج",
+    price: "السعر",
+    sandboxFree: "دفع محاكاة (مجاني)",
+    backBtn: "العودة للمواصفات"
+  },
+  HI: {
+    checkoutHeader: "सैंडबॉक्स चेकआउट",
+    hostingRegion: "होस्टिंग सेंटर नोड स्थान",
+    paymentMethod: "भुगतान विधि (सैंडबॉक्स)",
+    billingName: "बिलिंग का पूरा नाम",
+    billingEmail: "ऑपरेटर ईमेल पता",
+    sandboxAlertTitle: "सैंडबॉक्स सिमुलेशन मोड",
+    sandboxAlertDesc: "AppsMiner वर्तमान में नेटवर्क सैंडबॉक्स चरण में है। कोई वास्तविक पैसा नहीं लिया जाएगा। इस ऑर्डर को पूरा करने से यह वर्चुअल डिवाइस तुरंत आपके ऑपरेटर डैशबोर्ड से जुड़ जाएगी।",
+    processPaymentBtn: "सैंडबॉक्स भुगतान संसाधित करें",
+    successRedirectMsg: "भुगतान संसाधित! नोड टेलीमेट्री शुरू की जा रही है...",
+    stage1: "सुरक्षित ब्लॉकचेन गेटवे स्थापित किया जा रहा है...",
+    stage2: "वर्चुअल हार्डवेयर लाइसेंस टोकन ढाला जा रहा है...",
+    stage3: "स्ट्रैटम माइनिंग क्रेडेंशियल कॉन्फ़िगर किए जा रहे हैं...",
+    stage4: "नोड क्लस्टर को AppsMiner नेटवर्क से जोड़ा जा रहा है...",
+    stage5: "पूर्ण! सुरक्षित पंजीकरण पर पुनर्निर्देशित किया जा रहा है...",
+    iceland: "रेक्याविक, आइसलैंड (35ms)",
+    finland: "हेलसिंकी, फिनलैंड (42ms)",
+    sweden: "लुलेआ, स्वीडन (38ms)",
+    creditCard: "सिम्युलेटेड क्रेडिट कार्ड",
+    bitcoin: "बिटकॉइन टेस्टनेट वॉलेट",
+    usdt: "USDT सैंडबॉक्स पता",
+    namePlaceholder: "उदा. जॉन डो",
+    emailPlaceholder: "उदा. john@example.com",
+    orderSummary: "ऑर्डर सारांश",
+    product: "उत्पाद",
+    price: "कीमत",
+    sandboxFree: "सिम्युलेटेड भुगतान (निःशुल्क)",
+    backBtn: "वापस विवरण पर"
+  },
+  DE: {
+    checkoutHeader: "Sandbox-Checkout",
+    hostingRegion: "Hosting-Center Standort",
+    paymentMethod: "Zahlungsmethode (Sandbox)",
+    billingName: "Vollständiger Name des Betreibers",
+    billingEmail: "E-Mail-Adresse des Betreibers",
+    sandboxAlertTitle: "Sandbox-Simulationsmodus",
+    sandboxAlertDesc: "AppsMiner befindet sich derzeit in der Sandbox-Testphase. Es wird kein echtes Geld berechnet. Der Abschluss dieser Bestellung verknüpft dieses virtuelle Gerät sofort mit Ihrem Dashboard.",
+    processPaymentBtn: "Sandbox-Zahlung verarbeiten",
+    successRedirectMsg: "Zahlung verarbeitet! Knoten-Telemetrie wird initialisiert...",
+    stage1: "Sicheres Blockchain-Gateway wird eingerichtet...",
+    stage2: "Virtueller Hardware-Lizenztoken wird geprägt...",
+    stage3: "Stratum-Mining-Anmeldeinformationen werden konfiguriert...",
+    stage4: "Knoten-Cluster wird mit dem AppsMiner-Netzwerk verbunden...",
+    stage5: "Abgeschlossen! Weiterleitung zur sicheren Registrierung...",
+    iceland: "Reykjavik, Island (35ms)",
+    finland: "Helsinki, Finnland (42ms)",
+    sweden: "Luleå, Schweden (38ms)",
+    creditCard: "Simulierte Kreditkarte",
+    bitcoin: "Bitcoin-Testnet-Wallet",
+    usdt: "USDT Sandbox-Adresse",
+    namePlaceholder: "z.B. Max Mustermann",
+    emailPlaceholder: "z.B. max@example.com",
+    orderSummary: "Bestellübersicht",
+    product: "Produkt",
+    price: "Preis",
+    sandboxFree: "SIMULIERTE ZAHLUNG (KOSTENLOS)",
+    backBtn: "Zurück zu Details"
+  },
+  FR: {
+    checkoutHeader: "Paiement Sandbox",
+    hostingRegion: "Emplacement du Centre d'Hébergement",
+    paymentMethod: "Moyen de Paiement (Sandbox)",
+    billingName: "Nom Complet de l'Opérateur",
+    billingEmail: "Adresse E-mail de l'Opérateur",
+    sandboxAlertTitle: "Mode Simulation Sandbox",
+    sandboxAlertDesc: "AppsMiner est actuellement en phase de test sandbox. Aucun argent réel ne sera débité. Finaliser cette commande liera instantanément ce rig virtuel à votre tableau de bord opérateur.",
+    processPaymentBtn: "Procéder au Paiement Sandbox",
+    successRedirectMsg: "Paiement traité! Initialisation de la télémétrie du rig...",
+    stage1: "Établissement de la passerelle blockchain sécurisée...",
+    stage2: "Création du jeton de licence matérielle virtuelle...",
+    stage3: "Configuration des accès de minage stratum...",
+    stage4: "Connexion du cluster de rig au réseau AppsMiner...",
+    stage5: "Terminé! Redirection vers l'inscription sécurisée...",
+    iceland: "Reykjavik, Islande (35ms)",
+    finland: "Helsinki, Finlande (42ms)",
+    sweden: "Luleå, Suède (38ms)",
+    creditCard: "Carte Bancaire Simulée",
+    bitcoin: "Portefeuille Bitcoin Testnet",
+    usdt: "Adresse USDT Sandbox",
+    namePlaceholder: "ex: Jean Dupont",
+    emailPlaceholder: "ex: jean@example.com",
+    orderSummary: "Récapitulatif de Commande",
+    product: "Produit",
+    price: "Tarif",
+    sandboxFree: "PAIEMENT SIMULÉ (GRATUIT)",
+    backBtn: "Retour aux specs"
+  },
+  ES: {
+    checkoutHeader: "Procesar Pedido Sandbox",
+    hostingRegion: "Ubicación del Centro de Alojamiento",
+    paymentMethod: "Método de Pago (Sandbox)",
+    billingName: "Nombre Completo del Operador",
+    billingEmail: "Correo Electrónico del Operador",
+    sandboxAlertTitle: "Modo Simulación Sandbox",
+    sandboxAlertDesc: "AppsMiner está en fase de pruebas de red. No se cobrará dinero real. Completar este pedido vinculará este dispositivo virtual directamente a su panel de operador.",
+    processPaymentBtn: "Procesar Pago Sandbox",
+    successRedirectMsg: "¡Pago procesado! Iniciando telemetría del nodo...",
+    stage1: "Estableciendo pasarela blockchain segura...",
+    stage2: "Acuñando token de licencia de hardware virtual...",
+    stage3: "Configurando credenciales de minería stratum...",
+    stage4: "Conectando clúster de nodos a la red de AppsMiner...",
+    stage5: "¡Completado! Redirigiendo a registro seguro...",
+    iceland: "Reikiavik, Islandia (35ms)",
+    finland: "Helsinki, Finlandia (42ms)",
+    sweden: "Luleå, Suecia (38ms)",
+    creditCard: "Tarjeta de Crédito Simulada",
+    bitcoin: "Monedero Bitcoin Testnet",
+    usdt: "Dirección USDT Sandbox",
+    namePlaceholder: "ej. Juan Pérez",
+    emailPlaceholder: "ej. juan@ejemplo.com",
+    orderSummary: "Resumen de Pedido",
+    product: "Producto",
+    price: "Precio",
+    sandboxFree: "PAGO SIMULADO (GRATIS)",
+    backBtn: "Volver a Specs"
+  },
+  BN: {
+    checkoutHeader: "স্যান্ডবক্স চেকআউট",
+    hostingRegion: "হোস্টিং সেন্টার নোড লোকেশন",
+    paymentMethod: "পেমেন্ট মাধ্যম (স্যান্ডবক্স)",
+    billingName: "অপারেটরের পুরো নাম",
+    billingEmail: "অপারেটরের ইমেইল ঠিকানা",
+    sandboxAlertTitle: "স্যান্ডবক্স সিমুলেশন মোড",
+    sandboxAlertDesc: "AppsMiner বর্তমানে নেটওয়ার্ক স্যান্ডবক্স পর্যায়ে রয়েছে। কোনো আসল টাকা চার্জ করা হবে না। এই অর্ডারটি সম্পন্ন করলে এই ভার্চুয়াল ডিভাইসটি তাত্ক্ষণিকভাবে আপনার ড্যাশবোর্ডের সাথে যুক্ত হবে।",
+    processPaymentBtn: "স্যান্ডবক্স পেমেন্ট প্রসেস করুন",
+    successRedirectMsg: "পেমেন্ট প্রসেস হয়েছে! নোড টেলিমেট্রি সক্রিয় করা হচ্ছে...",
+    stage1: "নিরাপদ ব্লকচেইন গেটওয়ে স্থাপন করা হচ্ছে...",
+    stage2: "ভার্চুয়াল হার্ডওয়্যার লাইسن্স টোকেন তৈরি হচ্ছে...",
+    stage3: "স্ট্র্যাটাম মাইনিং ক্রেডেনশিয়াল কনফিগার করা হচ্ছে...",
+    stage4: "নোড ক্লাস্টারকে AppsMiner নেটওয়ার্কের সাথে যুক্ত করা হচ্ছে...",
+    stage5: "সম্পন্ন! নিরাপদ রেজিস্ট্রেশনে রিডাইরেক্ট করা হচ্ছে...",
+    iceland: "রেইকিয়াভিক, আইসল্যান্ড (৩৫ মিলি সেকেন্ড)",
+    finland: "হেলসিঙ্কি, ফিনল্যান্ড (৪২ মিলি সেকেন্ড)",
+    sweden: "লুলিয়া, সুইডেন (৩৮ মিলি সেকেন্ড)",
+    creditCard: "সিমুলেটেড ক্রেডিট কার্ড",
+    bitcoin: "বিটকয়েন টেস্টনেট ওয়ালেট",
+    usdt: "ইউএসডিটি স্যান্ডবক্স অ্যাড্রেস",
+    namePlaceholder: "উদাঃ জনাব কামাল",
+    emailPlaceholder: "উদাঃ kamal@example.com",
+    orderSummary: "অর্ডারের সারসংক্ষেপ",
+    product: "পণ্য",
+    price: "মূল্য",
+    sandboxFree: "সিমুলেটেড পেমেন্ট (সম্পূর্ণ ফ্রি)",
+    backBtn: "স্পেক্স-এ ফিরে যান"
+  }
+};
+
 // ─────────────────────────────────────────────────────────────
 // HardwareCatalog
 // ─────────────────────────────────────────────────────────────
 export default function HardwareCatalog() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const { t, isRtl } = useTranslation();
+  const { language, t, isRtl } = useTranslation();
+  const code = language.code; // "EN" | "AR" | "HI" | "DE" | "FR" | "ES" | "BN"
 
-  const flagships = products.filter((p) => p.type === "flagship");
-  const micros    = products.filter((p) => p.type === "micro");
-  const bundles   = products.filter((p) => p.type === "bundle");
+  const localizedProducts = products.map((product) => {
+    const locProductData = CATALOG_I18N[code]?.products?.[product.id] || CATALOG_I18N.EN.products[product.id] || {};
+    
+    // Localize specGroups
+    const localizedSpecGroups = product.specGroups.map((group) => {
+      const locLabel = CATALOG_I18N[code]?.specLabels?.[group.label] || group.label;
+      const localizedRows = group.rows.map((row) => {
+        const locKey = CATALOG_I18N[code]?.specKeys?.[row.key] || row.key;
+        const locVal = CATALOG_I18N[code]?.specKeys?.[row.value] || row.value;
+        return { 
+          ...row, 
+          key: locKey, 
+          value: locVal 
+        };
+      });
+      return { ...group, label: locLabel, rows: localizedRows };
+    });
+
+    return {
+      ...product,
+      name: locProductData.name || product.name,
+      series: locProductData.series || product.series,
+      description: locProductData.description || product.description,
+      badge: locProductData.badge || product.badge,
+      specGroups: localizedSpecGroups,
+    };
+  });
+
+  const localizedSelectedProduct = selectedProduct
+    ? localizedProducts.find((p) => p.id === selectedProduct.id) || null
+    : null;
+
+  const flagships = localizedProducts.filter((p) => p.type === "flagship");
+  const micros    = localizedProducts.filter((p) => p.type === "micro");
+  const bundles   = localizedProducts.filter((p) => p.type === "bundle");
+
+  const locLabels = CATALOG_I18N[code] || CATALOG_I18N.EN;
 
   return (
-    <section id="products" className="py-32 bg-[#080808] text-white relative z-20" dir={isRtl ? "rtl" : "ltr"}>
+    <section id="products" className={`py-32 bg-[#080808] text-white relative transition-all duration-300 ${selectedProduct ? "z-[100]" : "z-20"}`} dir={isRtl ? "rtl" : "ltr"}>
       <div className="max-w-[1400px] mx-auto px-6">
 
         {/* Heading */}
         <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
           <div className="max-w-xl">
-            <h2 className="text-[10px] font-black tracking-[0.3em] text-gray-500 uppercase mb-4">{t("catalogTitle")}</h2>
+            <h2 className="text-[10px] font-black tracking-[0.3em] text-[#00f2ff] uppercase mb-4">{t("catalogTitle")}</h2>
             <h3 className="text-4xl md:text-6xl font-black tracking-tighter uppercase leading-none text-white">
-              {isRtl ? (
-                <>
-                  أجهزة التعدين<br />
-                  <span className="text-gray-600">عالية الدقة</span>
-                </>
-              ) : (
-                <>
-                  Precision <br /><span className="text-gray-600">Mining Arrays</span>
-                </>
-              )}
+              {locLabels.precisionTitle} <br />
+              <span className="text-gray-600">{locLabels.miningArraysTitle}</span>
             </h3>
           </div>
           <p className="text-gray-600 text-sm max-w-xs font-medium leading-relaxed">
@@ -465,38 +701,38 @@ export default function HardwareCatalog() {
         {/* Flagship */}
         <div className="mb-20" id="flagship-series">
           <h4 className="text-xl font-black mb-8 flex items-center gap-2 text-white/80 uppercase tracking-widest">
-            <Zap size={18} className="text-[#00f2ff]" /> Pro Series Flagships
+            <Zap size={18} className="text-[#00f2ff]" /> {locLabels.proSeriesTitle}
           </h4>
           <div className="grid md:grid-cols-3 gap-6">
-            {flagships.map((p) => <ProductCard key={p.id} product={p} onClick={() => setSelectedProduct(p)} />)}
+            {flagships.map((p) => <ProductCard key={p.id} product={p} onClick={() => setSelectedProduct(p)} locLabels={locLabels} />)}
           </div>
         </div>
 
         {/* Micro Series */}
         <div className="mb-20" id="micro-series">
           <h4 className="text-xl font-black mb-8 flex items-center gap-2 text-white/80 uppercase tracking-widest">
-            <Cpu size={18} className="text-[#00f2ff]" /> Micro-Controller Series
+            <Cpu size={18} className="text-[#00f2ff]" /> {locLabels.microSeriesTitle}
           </h4>
           <div className="grid md:grid-cols-3 gap-6">
-            {micros.map((p) => <ProductCard key={p.id} product={p} onClick={() => setSelectedProduct(p)} />)}
+            {micros.map((p) => <ProductCard key={p.id} product={p} onClick={() => setSelectedProduct(p)} locLabels={locLabels} />)}
           </div>
         </div>
 
         {/* Bundles */}
         <div id="prices">
           <h4 className="text-xl font-black mb-8 flex items-center gap-2 text-white/80 uppercase tracking-widest">
-            <ShoppingCart size={18} className="text-[#00f2ff]" /> Distributed Bundles
+            <ShoppingCart size={18} className="text-[#00f2ff]" /> {locLabels.bundleSeriesTitle}
           </h4>
           <div className="grid grid-cols-1 gap-6">
-            {bundles.map((p) => <ProductCard key={p.id} product={p} onClick={() => setSelectedProduct(p)} />)}
+            {bundles.map((p) => <ProductCard key={p.id} product={p} onClick={() => setSelectedProduct(p)} locLabels={locLabels} />)}
           </div>
         </div>
       </div>
 
       {/* Modal */}
       <AnimatePresence>
-        {selectedProduct && (
-          <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+        {localizedSelectedProduct && (
+          <ProductModal product={localizedSelectedProduct} onClose={() => setSelectedProduct(null)} locLabels={locLabels} />
         )}
       </AnimatePresence>
     </section>
@@ -506,7 +742,7 @@ export default function HardwareCatalog() {
 // ─────────────────────────────────────────────────────────────
 // ProductCard
 // ─────────────────────────────────────────────────────────────
-function ProductCard({ product, onClick }: { product: Product; onClick: () => void }) {
+function ProductCard({ product, onClick, locLabels }: { product: Product; onClick: () => void; locLabels: any }) {
   const isBundle = product.type === "bundle";
 
   if (isBundle) {
@@ -563,13 +799,13 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
 
           <div className="flex items-center justify-between pt-5 border-t border-white/10 mt-auto">
             <div className="flex items-baseline gap-2">
-              <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider">Bundle Price:</span>
+              <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider">{locLabels.bundlePrice}</span>
               <motion.span layoutId={`price-${product.id}`} className="text-3xl font-black text-white">
                 {product.price}
               </motion.span>
             </div>
             <div className="flex items-center gap-3 text-xs font-black uppercase tracking-widest text-[#00f2ff] group-hover:text-white transition-colors">
-              <span>View Bundle Specs</span>
+              <span>{locLabels.viewBundleSpecs}</span>
               <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 group-hover:bg-[#00f2ff] group-hover:text-black group-hover:border-transparent text-white flex items-center justify-center transition-all duration-300">
                 <ChevronRight size={18} />
               </div>
@@ -618,11 +854,11 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
         {product.hashrate && (
           <div className="grid grid-cols-2 gap-3 mb-4 p-3 rounded-xl bg-white/5 border border-white/10">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">Hashrate</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">{locLabels.specKeys.Hashrate}</p>
               <p className="font-black text-[#00f2ff] text-sm">{product.hashrate}</p>
             </div>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">Efficiency</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">{locLabels.specKeys.Efficiency}</p>
               <p className="font-black text-white text-sm">{product.efficiency}</p>
             </div>
           </div>
@@ -644,8 +880,17 @@ function ProductCard({ product, onClick }: { product: Product; onClick: () => vo
 // ─────────────────────────────────────────────────────────────
 // ProductModal — tabbed spec sheet
 // ─────────────────────────────────────────────────────────────
-function ProductModal({ product, onClose }: { product: Product; onClose: () => void }) {
+function ProductModal({ product, onClose, locLabels }: { product: Product; onClose: () => void; locLabels: any }) {
   const [activeTab, setActiveTab] = useState(0);
+  const [isCheckout, setIsCheckout] = useState(false);
+  const router = useRouter();
+  const { language } = useTranslation();
+  const cCode = language.code;
+  const cl = CHECKOUT_I18N[cCode] || CHECKOUT_I18N.EN;
+
+  // Extract localized warranty from rows
+  const warrantyRow = product.specGroups.flatMap((g) => g.rows).find((r) => r.key === locLabels.specKeys.Warranty || r.key === "Warranty");
+  const warrantyVal = warrantyRow ? warrantyRow.value : "12 mo";
 
   return (
     <>
@@ -674,7 +919,7 @@ function ProductModal({ product, onClose }: { product: Product; onClose: () => v
           <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
 
             {/* LEFT — image + hero info */}
-            <div className="w-full md:w-[40%] flex flex-col border-r border-white/10 flex-shrink-0">
+            <div className="w-full md:w-[40%] flex flex-col border-r border-white/10 flex-shrink-0 bg-black/20">
 
               {/* Image area */}
               <div className="relative flex-1 min-h-[240px] md:min-h-0 bg-white/3 flex items-center justify-center p-8">
@@ -718,109 +963,352 @@ function ProductModal({ product, onClose }: { product: Product; onClose: () => v
                   </div>
                 )}
 
-                <button className="w-full py-4 bg-white text-black font-black uppercase tracking-[0.15em] text-xs rounded-2xl hover:bg-[#00f2ff] hover:scale-[1.02] transition-all flex items-center justify-center gap-2 shadow-xl">
-                  <ShoppingCart size={16} /> Add to Cart
+                <button
+                  onClick={() => setIsCheckout(!isCheckout)}
+                  className={`w-full py-4 font-black uppercase tracking-[0.15em] text-xs rounded-2xl hover:scale-[1.02] transition-all flex items-center justify-center gap-2 shadow-xl ${
+                    isCheckout
+                      ? "bg-white/10 text-white hover:bg-white/20 border border-white/10"
+                      : "bg-white text-black hover:bg-[#00f2ff]"
+                  }`}
+                >
+                  {isCheckout ? (
+                    <>
+                      <ArrowLeft size={16} /> {cl.backBtn}
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart size={16} /> {locLabels.addToCartBtn}
+                    </>
+                  )}
                 </button>
               </div>
             </div>
 
-            {/* RIGHT — spec sheet */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-
-              {/* Tab bar */}
-              <div className="flex overflow-x-auto border-b border-white/10 px-4 pt-4 gap-1 flex-shrink-0 scrollbar-hide">
-                {product.specGroups.map((group, i) => {
-                  const Icon = GROUP_ICONS[group.label] ?? Activity;
-                  return (
-                    <button
-                      key={group.label}
-                      onClick={() => setActiveTab(i)}
-                      className={`flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all flex-shrink-0 border-b-2 ${
-                        activeTab === i
-                          ? "text-[#00f2ff] border-[#00f2ff] bg-[#00f2ff]/8"
-                          : "text-gray-600 border-transparent hover:text-gray-400"
-                      }`}
-                    >
-                      <Icon size={12} />
-                      {group.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Spec rows */}
-              <div className="flex-1 overflow-y-auto p-6">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.18 }}
-                    className="space-y-1"
-                  >
-                    {/* Group title */}
-                    <div className="flex items-center gap-2 mb-5">
-                      {(() => {
-                        const Icon = GROUP_ICONS[product.specGroups[activeTab].label] ?? Activity;
-                        return <Icon size={16} className="text-[#00f2ff]" />;
-                      })()}
-                      <h3 className="text-xs font-black uppercase tracking-[0.3em] text-gray-400">
-                        {product.specGroups[activeTab].label}
-                      </h3>
-                    </div>
-
-                    {product.specGroups[activeTab].rows.map((row, i) => (
-                      <motion.div
-                        key={row.key}
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.04, duration: 0.2 }}
-                        className={`flex items-center justify-between py-3.5 px-4 rounded-xl transition-colors group/row ${
-                          row.highlight
-                            ? "bg-[#00f2ff]/6 border border-[#00f2ff]/20"
-                            : "bg-white/3 border border-white/6 hover:bg-white/6"
-                        }`}
-                      >
-                        <span className="text-xs font-bold text-gray-500 group-hover/row:text-gray-400 transition-colors">
-                          {row.key}
-                        </span>
-                        <span className={`text-sm font-black tabular-nums text-right ${
-                          row.highlight ? "text-[#00f2ff]" : "text-white"
-                        }`}>
-                          {row.value}
-                        </span>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                </AnimatePresence>
-
-                {/* Quick-reference footer bar for flagship */}
-                {product.hashrate && (
-                  <div className="mt-6 grid grid-cols-3 gap-3">
-                    {[
-                      { Icon: Activity,    label: "Hashrate",   val: product.hashrate },
-                      { Icon: Zap,         label: "Efficiency", val: product.efficiency ?? "—" },
-                      { Icon: Clock,       label: "Warranty",   val: product.type === "flagship" ? (product.id === "t200" ? "24 mo" : product.id === "f100" ? "18 mo" : "12 mo") : "12 mo" },
-                    ].map(({ Icon, label, val }) => (
-                      <div key={label} className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
-                        <Icon size={14} className="text-[#00f2ff] mx-auto mb-1.5" />
-                        <p className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-1">{label}</p>
-                        <p className="text-sm font-black text-white">{val}</p>
-                      </div>
-                    ))}
+            {/* RIGHT — spec sheet OR checkout */}
+            <div className="flex-1 flex flex-col overflow-hidden bg-black/10">
+              {!isCheckout ? (
+                <>
+                  {/* Tab bar */}
+                  <div className="flex overflow-x-auto border-b border-white/10 px-4 pt-4 gap-1 flex-shrink-0 scrollbar-hide">
+                    {product.specGroups.map((group, i) => {
+                      const Icon = GROUP_ICONS[group.label] ?? Activity;
+                      return (
+                        <button
+                          key={group.label}
+                          onClick={() => setActiveTab(i)}
+                          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all flex-shrink-0 border-b-2 ${
+                            activeTab === i
+                              ? "text-[#00f2ff] border-[#00f2ff] bg-[#00f2ff]/8"
+                              : "text-gray-600 border-transparent hover:text-gray-400"
+                          }`}
+                        >
+                          <Icon size={12} />
+                          {group.label}
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
 
-                {/* Compare notice */}
-                <p className="text-center text-[10px] text-gray-700 font-bold mt-6 uppercase tracking-widest">
-                  All specs subject to ±5% manufacturing tolerance
-                </p>
-              </div>
+                  {/* Spec rows */}
+                  <div className="flex-1 overflow-y-auto p-6">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={activeTab}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.18 }}
+                        className="space-y-1"
+                      >
+                        {/* Group title */}
+                        <div className="flex items-center gap-2 mb-5">
+                          {(() => {
+                            const Icon = GROUP_ICONS[product.specGroups[activeTab].label] ?? Activity;
+                            return <Icon size={16} className="text-[#00f2ff]" />;
+                          })()}
+                          <h3 className="text-xs font-black uppercase tracking-[0.3em] text-gray-400">
+                            {product.specGroups[activeTab].label}
+                          </h3>
+                        </div>
+
+                        {product.specGroups[activeTab].rows.map((row, i) => (
+                          <motion.div
+                            key={row.key}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.04, duration: 0.2 }}
+                            className={`flex items-center justify-between py-3.5 px-4 rounded-xl transition-colors group/row ${
+                              row.highlight
+                                ? "bg-[#00f2ff]/6 border border-[#00f2ff]/20"
+                                : "bg-white/3 border border-white/6 hover:bg-white/6"
+                            }`}
+                          >
+                            <span className="text-xs font-bold text-gray-500 group-hover/row:text-gray-400 transition-colors">
+                              {row.key}
+                            </span>
+                            <span className={`text-sm font-black tabular-nums text-right ${
+                              row.highlight ? "text-[#00f2ff]" : "text-white"
+                            }`}>
+                              {row.value}
+                            </span>
+                          </motion.div>
+                        ))}
+                      </motion.div>
+                    </AnimatePresence>
+
+                    {/* Quick-reference footer bar for flagship */}
+                    {product.hashrate && (
+                      <div className="mt-6 grid grid-cols-3 gap-3">
+                        {[
+                          { Icon: Activity,    label: locLabels.specKeys.Hashrate,   val: product.hashrate },
+                          { Icon: Zap,         label: locLabels.specKeys.Efficiency, val: product.efficiency ?? "—" },
+                          { Icon: Clock,       label: locLabels.specKeys.Warranty,   val: warrantyVal },
+                        ].map(({ Icon, label, val }) => (
+                          <div key={label} className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
+                            <Icon size={14} className="text-[#00f2ff] mx-auto mb-1.5" />
+                            <p className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-1">{label}</p>
+                            <p className="text-sm font-black text-white">{val}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Compare notice */}
+                    <p className="text-center text-[10px] text-gray-700 font-bold mt-6 uppercase tracking-widest">
+                      All specs subject to ±5% manufacturing tolerance
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <CheckoutWizard product={product} cl={cl} router={router} onClose={onClose} />
+              )}
             </div>
           </div>
         </motion.div>
       </div>
     </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CheckoutWizard Component
+// ─────────────────────────────────────────────────────────────
+function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl: any; router: any; onClose: () => void }) {
+  const [region, setRegion] = useState("Reykjavik, Iceland");
+  const [paymentMethod, setPaymentMethod] = useState("CreditCard");
+  const [billingName, setBillingName] = useState("");
+  const [billingEmail, setBillingEmail] = useState("");
+  const [processing, setProcessing] = useState(false);
+  const [step, setStep] = useState(0);
+
+  const handleCheckout = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!billingName || !billingEmail) {
+      alert("Please fill in billing details.");
+      return;
+    }
+    setProcessing(true);
+    setStep(1);
+
+    // Step-by-step progress animation
+    setTimeout(() => {
+      setStep(2);
+      setTimeout(() => {
+        setStep(3);
+        setTimeout(() => {
+          setStep(4);
+          setTimeout(() => {
+            setStep(5);
+            setTimeout(() => {
+              // Create the purchased node object
+              const newPurchase = {
+                id: "node_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+                productId: product.id,
+                productName: product.name,
+                hashrate: product.hashrate || (product.id === "starter-kit" ? "2.15 TH/s" : "50 TH/s"),
+                power: product.id === "starter-kit" ? "185 W" : (product.id === "t200" ? "5,000 W" : product.id === "f100" ? "2,800 W" : product.id === "f50" ? "1,500 W" : product.id === "mini" ? "45 W" : product.id === "nano" ? "10 W" : "5 W"),
+                price: product.price,
+                region: region.split(" (")[0],
+                date: new Date().toLocaleDateString(),
+                status: "online"
+              };
+
+              // Save to localStorage
+              const existingStr = localStorage.getItem("sb-mock-purchases");
+              const existing = existingStr ? JSON.parse(existingStr) : [];
+              existing.push(newPurchase);
+              localStorage.setItem("sb-mock-purchases", JSON.stringify(existing));
+              localStorage.setItem("force-demo-mode", "true");
+
+              // Close modal and redirect
+              onClose();
+              router.push(`/login?checkout_success=true&email=${encodeURIComponent(billingEmail)}`);
+            }, 1000);
+          }, 800);
+        }, 800);
+      }, 800);
+    }, 800);
+  };
+
+  const currentStepText = () => {
+    switch (step) {
+      case 1: return cl.stage1;
+      case 2: return cl.stage2;
+      case 3: return cl.stage3;
+      case 4: return cl.stage4;
+      case 5: return cl.stage5;
+      default: return cl.successRedirectMsg;
+    }
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6 flex flex-col justify-between">
+      {processing ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 py-12">
+          <div className="relative w-16 h-16 flex items-center justify-center">
+            <Loader2 className="w-12 h-12 text-[#00f2ff] animate-spin absolute" />
+            <div className="w-6 h-6 bg-[#00f2ff]/20 rounded-full animate-ping" />
+          </div>
+          <div className="text-center space-y-2">
+            <h4 className="text-sm font-black uppercase tracking-widest text-white animate-pulse">
+              {currentStepText()}
+            </h4>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+              Secure Gateway Telemetry // Sandbox v2.4
+            </p>
+          </div>
+          
+          {/* Progress bar */}
+          <div className="w-full max-w-xs bg-white/5 border border-white/10 rounded-full h-2.5 overflow-hidden">
+            <motion.div 
+              className="bg-[#00f2ff] h-full"
+              initial={{ width: "0%" }}
+              animate={{ width: `${(step / 5) * 100}%` }}
+              transition={{ duration: 0.5 }}
+            />
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleCheckout} className="space-y-6">
+          <div className="border-b border-white/5 pb-4">
+            <h3 className="text-xs font-black uppercase tracking-[0.3em] text-[#00f2ff]">
+              {cl.checkoutHeader}
+            </h3>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-1">
+              {cl.orderSummary}: {product.name} (1x)
+            </p>
+          </div>
+
+          {/* Warning banner */}
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold flex flex-col gap-1.5 leading-relaxed">
+            <div className="flex items-center gap-1.5 uppercase tracking-wider">
+              <CheckCircle size={14} className="text-amber-500" />
+              <span>{cl.sandboxAlertTitle}</span>
+            </div>
+            <span>{cl.sandboxAlertDesc}</span>
+          </div>
+
+          {/* Hosting Center Location */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">
+              <Globe size={12} /> {cl.hostingRegion}
+            </label>
+            <div className="relative">
+              <select
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-[#00f2ff]/60 appearance-none cursor-pointer"
+              >
+                <option value="Reykjavik, Iceland" className="bg-[#0a0a0a]">{cl.iceland}</option>
+                <option value="Helsinki, Finland" className="bg-[#0a0a0a]">{cl.finland}</option>
+                <option value="Luleå, Sweden" className="bg-[#0a0a0a]">{cl.sweden}</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Payment Method */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">
+              <CreditCard size={12} /> {cl.paymentMethod}
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: "CreditCard", label: cl.creditCard },
+                { id: "Bitcoin", label: cl.bitcoin },
+                { id: "USDT", label: cl.usdt }
+              ].map((m) => (
+                <button
+                  type="button"
+                  key={m.id}
+                  onClick={() => setPaymentMethod(m.id)}
+                  className={`py-3 px-2 rounded-xl text-[9px] font-black uppercase text-center border transition-all ${
+                    paymentMethod === m.id
+                      ? "bg-[#00f2ff]/10 border-[#00f2ff] text-[#00f2ff]"
+                      : "bg-white/5 border-white/5 text-gray-400 hover:text-white hover:border-white/10"
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Operator Details */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">
+                <User size={12} /> {cl.billingName}
+              </label>
+              <input
+                type="text"
+                required
+                value={billingName}
+                onChange={(e) => setBillingName(e.target.value)}
+                placeholder={cl.namePlaceholder}
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 text-xs"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5">
+                <Mail size={12} /> {cl.billingEmail}
+              </label>
+              <input
+                type="email"
+                required
+                value={billingEmail}
+                onChange={(e) => setBillingEmail(e.target.value)}
+                placeholder={cl.emailPlaceholder}
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Order Summary Total */}
+          <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-2 text-xs">
+            <div className="flex justify-between font-bold text-gray-500">
+              <span>{cl.product}</span>
+              <span>{product.name} (1x)</span>
+            </div>
+            <div className="flex justify-between font-bold text-gray-500">
+              <span>{cl.price}</span>
+              <span>{product.price}</span>
+            </div>
+            <div className="flex justify-between font-black text-white pt-2 border-t border-white/5">
+              <span>TOTAL DUE</span>
+              <span className="text-[#00f2ff]">{cl.sandboxFree}</span>
+            </div>
+          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            className="w-full py-4 bg-[#00f2ff] text-black font-black uppercase tracking-[0.15em] text-xs rounded-xl hover:bg-[#00e1ec] hover:scale-[1.02] transition-all flex items-center justify-center gap-2 shadow-xl"
+          >
+            <CheckCircle size={16} /> {cl.processPaymentBtn}
+          </button>
+        </form>
+      )}
+    </div>
   );
 }

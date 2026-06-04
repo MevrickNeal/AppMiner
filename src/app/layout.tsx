@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans, Cairo, Rajdhani, Hind_Siliguri } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { LanguageProvider } from "@/context/LanguageContext";
@@ -7,6 +7,24 @@ import { LanguageProvider } from "@/context/LanguageContext";
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
   subsets: ["latin"],
+});
+
+const cairo = Cairo({
+  variable: "--font-cairo",
+  subsets: ["arabic"],
+  weight: ["300", "400", "700", "900"],
+});
+
+const rajdhani = Rajdhani({
+  variable: "--font-rajdhani",
+  subsets: ["devanagari"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const hindSiliguri = Hind_Siliguri({
+  variable: "--font-siliguri",
+  subsets: ["bengali"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -26,7 +44,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${plusJakarta.variable} h-full antialiased`}
+      className={`${plusJakarta.variable} ${cairo.variable} ${rajdhani.variable} ${hindSiliguri.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground selection:bg-primary selection:text-black font-sans">
         <LanguageProvider>

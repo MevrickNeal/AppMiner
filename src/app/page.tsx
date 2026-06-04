@@ -3,6 +3,7 @@ import HeroIntro         from "@/components/HeroIntro";
 import HeroSection       from "@/components/HeroSection";
 import CryptoTicker      from "@/components/CryptoTicker";
 import HardwareCatalog   from "@/components/HardwareCatalog";
+import AsicResearch      from "@/components/AsicResearch";
 import Features          from "@/components/Features";
 import MiningDashboard   from "@/components/MiningDashboard";
 import CryptoServices    from "@/components/CryptoServices";
@@ -19,6 +20,7 @@ export default function Home() {
       {/* ── Dark zone ───────────────────────────── */}
       <CryptoTicker />
       <HardwareCatalog />
+      <AsicResearch />
       <Features />
       <MiningDashboard />
       {/* WalletServices is gated behind /dashboard — login required */}

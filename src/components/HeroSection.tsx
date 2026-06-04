@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
+import { useTranslation } from "@/context/LanguageContext";
 
 export default function HeroSection() {
+  const { t, isRtl } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<HTMLImageElement[]>([]);
@@ -121,27 +123,30 @@ export default function HeroSection() {
         <motion.div
           style={{ opacity: cap1Opacity, y: cap1Y }}
           className="pointer-events-none absolute left-8 lg:left-20 bottom-[30%] glass-panel rounded-3xl p-6 lg:p-8 max-w-xs lg:max-w-sm"
+          dir={isRtl ? "rtl" : "ltr"}
         >
-          <h3 className="text-xl lg:text-2xl font-black text-black mb-2 tracking-tighter">Precision Engineering</h3>
-          <p className="text-gray-600 text-sm leading-relaxed">Every component machined to sub-millimeter tolerances for peak thermal performance.</p>
+          <h3 className="text-xl lg:text-2xl font-black text-black mb-2 tracking-tighter">{t("heroSecTitle1")}</h3>
+          <p className="text-gray-600 text-sm leading-relaxed">{t("heroSecDesc1")}</p>
         </motion.div>
 
         {/* Caption 2 – upper-right */}
         <motion.div
           style={{ opacity: cap2Opacity, y: cap2Y }}
           className="pointer-events-none absolute right-8 lg:right-20 top-[25%] glass-panel rounded-3xl p-6 lg:p-8 max-w-xs lg:max-w-sm"
+          dir={isRtl ? "rtl" : "ltr"}
         >
-          <h3 className="text-xl lg:text-2xl font-black text-black mb-2 tracking-tighter">Quantum Hashrate</h3>
-          <p className="text-gray-600 text-sm leading-relaxed">Proprietary ASICs delivering up to 200 TH/s at industry-leading 15 J/TH efficiency.</p>
+          <h3 className="text-xl lg:text-2xl font-black text-black mb-2 tracking-tighter">{t("heroSecTitle2")}</h3>
+          <p className="text-gray-600 text-sm leading-relaxed">{t("heroSecDesc2")}</p>
         </motion.div>
 
         {/* Caption 3 – lower-right */}
         <motion.div
           style={{ opacity: cap3Opacity, y: cap3Y }}
           className="pointer-events-none absolute right-8 lg:right-20 bottom-[25%] glass-panel rounded-3xl p-6 lg:p-8 max-w-xs lg:max-w-sm"
+          dir={isRtl ? "rtl" : "ltr"}
         >
-          <h3 className="text-xl lg:text-2xl font-black text-black mb-2 tracking-tighter">Immutable Architecture</h3>
-          <p className="text-gray-600 text-sm leading-relaxed">Direct cold-storage integration keeps your mined assets air-gapped from the moment they&apos;re earned.</p>
+          <h3 className="text-xl lg:text-2xl font-black text-black mb-2 tracking-tighter">{t("heroSecTitle3")}</h3>
+          <p className="text-gray-600 text-sm leading-relaxed">{t("heroSecDesc3")}</p>
         </motion.div>
 
       </div>

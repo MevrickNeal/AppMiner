@@ -17,6 +17,27 @@ body {
   color: var(--foreground);
   background: var(--background);
   overflow-x: hidden;
+  font-family: var(--font-plus-jakarta), sans-serif;
+}
+
+body.lang-ar {
+  font-family: var(--font-cairo), sans-serif;
+  --font-sans: var(--font-cairo), sans-serif;
+}
+
+body.lang-hi {
+  font-family: var(--font-rajdhani), sans-serif;
+  --font-sans: var(--font-rajdhani), sans-serif;
+}
+
+body.lang-bn {
+  font-family: var(--font-siliguri), sans-serif;
+  --font-sans: var(--font-siliguri), sans-serif;
+}
+
+body.lang-en, body.lang-de, body.lang-fr, body.lang-es {
+  font-family: var(--font-plus-jakarta), sans-serif;
+  --font-sans: var(--font-plus-jakarta), sans-serif;
 }
 
 /* ─── Light section (HeroIntro) ─────────────────────────── */

@@ -1,9 +1,15 @@
+"use client";
+
+import { useTranslation } from "@/context/LanguageContext";
+
 export default function Features() {
+  const { t } = useTranslation();
+
   const stats = [
-    { value: "99.9%", label: "Uptime Rate" },
-    { value: "24/7",  label: "Expert Support" },
-    { value: "0%",    label: "Pool Fees" },
-    { value: "SAFE",  label: "Node Protocol" },
+    { value: "99.9%", label: t("featuresUptime") },
+    { value: "24/7",  label: t("featuresSupport") },
+    { value: "0%",    label: t("featuresPoolFees") },
+    { value: "SAFE",  label: t("featuresProtocol") },
   ];
 
   return (

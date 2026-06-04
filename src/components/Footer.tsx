@@ -4,25 +4,158 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { GitBranch, MessageCircle, Globe, Mail, ArrowUpRight, Zap } from "lucide-react";
+import { useTranslation } from "@/context/LanguageContext";
 
-const NAV_COLS = [
-  {
-    title: "Products",
-    links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+// Localized Footer Data
+const FOOTER_I18N: Record<string, any> = {
+  EN: {
+    desc: "Industrial-grade ASIC mining hardware, institutional trading, and enterprise-level asset security.",
+    navCols: [
+      {
+        title: "Products",
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+      },
+      {
+        title: "Services",
+        links: ["Mining Pool", "Trading House", "Hot Wallet", "Cold Storage", "API Access"],
+      },
+      {
+        title: "Company",
+        links: ["About Us", "Blog", "Careers", "Press Kit", "Contact"],
+      },
+      {
+        title: "Legal",
+        links: ["Privacy Policy", "Terms of Service", "Cookie Policy", "Compliance"],
+      },
+    ]
   },
-  {
-    title: "Services",
-    links: ["Mining Pool", "Trading House", "Hot Wallet", "Cold Storage", "API Access"],
+  AR: {
+    desc: "أجهزة تعدين ASIC بمستوى صناعي، تداول مؤسسي، وأمان أصول بمستوى الشركات.",
+    navCols: [
+      {
+        title: "المنتجات",
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+      },
+      {
+        title: "الخدمات",
+        links: ["مجمع التعدين", "بيت التداول", "المحفظة الساخنة", "الخزنة الباردة", "وصول API"],
+      },
+      {
+        title: "الشركة",
+        links: ["من نحن", "المدونة", "الوظائف", "حقيبة الصحافة", "اتصل بنا"],
+      },
+      {
+        title: "القانونية",
+        links: ["سياسة الخصوصية", "شروط الخدمة", "سياسة الكوكيز", "الالتزام والامتثال"],
+      },
+    ]
   },
-  {
-    title: "Company",
-    links: ["About Us", "Blog", "Careers", "Press Kit", "Contact"],
+  HI: {
+    desc: "औद्योगिक-ग्रेड ASIC माइनिंग हार्डवेयर, संस्थागत ट्रेडिंग, और एंटरप्राइज-स्तरीय परिसंपत्ति सुरक्षा।",
+    navCols: [
+      {
+        title: "उत्पाद",
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+      },
+      {
+        title: "सेवाएं",
+        links: ["माइनिंग पूल", "ट्रेडिंग हाउस", "हॉट वॉलेट", "कोल्ड स्टोरेज", "एपीआई एक्सेस"],
+      },
+      {
+        title: "कंपनी",
+        links: ["हमारे बारे में", "ब्लॉग", "करियर", "प्रेस किट", "संपर्क"],
+      },
+      {
+        title: "कानूनी",
+        links: ["गोपनीयता नीति", "सेवा की शर्तें", "कुकी नीति", "अनुपालन"],
+      },
+    ]
   },
-  {
-    title: "Legal",
-    links: ["Privacy Policy", "Terms of Service", "Cookie Policy", "Compliance"],
+  DE: {
+    desc: "ASIC-Mining-Hardware in Industriequalität, institutioneller Handel und Asset-Sicherheit auf Unternehmensebene.",
+    navCols: [
+      {
+        title: "Produkte",
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+      },
+      {
+        title: "Services",
+        links: ["Mining-Pool", "Handelshaus", "Hot Wallet", "Cold Storage", "API-Zugang"],
+      },
+      {
+        title: "Unternehmen",
+        links: ["Über uns", "Blog", "Karriere", "Presse-Kit", "Kontakt"],
+      },
+      {
+        title: "Rechtliches",
+        links: ["Datenschutzerklärung", "Nutzungsbedingungen", "Cookie-Richtlinie", "Compliance"],
+      },
+    ]
   },
-];
+  FR: {
+    desc: "Matériel de minage ASIC de qualité industrielle, trading institutionnel et sécurité des actifs de niveau entreprise.",
+    navCols: [
+      {
+        title: "Produits",
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+      },
+      {
+        title: "Services",
+        links: ["Pool de Minage", "Maison de Trading", "Hot Wallet", "Stockage Froid", "Accès API"],
+      },
+      {
+        title: "Société",
+        links: ["À Propos", "Blog", "Recrutement", "Espace Presse", "Contact"],
+      },
+      {
+        title: "Légal",
+        links: ["Confidentialité", "Conditions d'Utilisation", "Gestion des Cookies", "Conformité"],
+      },
+    ]
+  },
+  ES: {
+    desc: "Hardware de minería ASIC de grado industrial, trading institucional y seguridad de activos a nivel empresarial.",
+    navCols: [
+      {
+        title: "Productos",
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+      },
+      {
+        title: "Servicios",
+        links: ["Pool de Minería", "Casa de Trading", "Billetera Caliente", "Bóveda Fría", "Acceso API"],
+      },
+      {
+        title: "Compañía",
+        links: ["Sobre Nosotros", "Blog", "Empleo", "Prensa", "Contacto"],
+      },
+      {
+        title: "Legal",
+        links: ["Privacidad", "Términos de Servicio", "Política de Cookies", "Cumplimiento"],
+      },
+    ]
+  },
+  BN: {
+    desc: "শিল্প-মানের ASIC মাইনিং হার্ডওয়্যার, প্রাতিষ্ঠানিক ক্রিপ্টো ট্রেডিং এবং এন্টারপ্রাইজ-স্তরের সম্পদ নিরাপত্তা ব্যবস্থা।",
+    navCols: [
+      {
+        title: "পণ্যসমূহ",
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+      },
+      {
+        title: "সেবাসমূহ",
+        links: ["মাইনিং পুল", "ট্রেডিং হাউজ", "হট ওয়ালেট", "কোল্ড স্টোরেজ", "এপিআই অ্যাক্সেস"],
+      },
+      {
+        title: "কোম্পানি",
+        links: ["আমাদের কথা", "ব্লগ", "ক্যারিয়ার", "প্রেস কিট", "যোগাযোগ"],
+      },
+      {
+        title: "আইনি",
+        links: ["গোপনীয়তা নীতি", "পরিষেবার শর্তাবলী", "কুকি নীতি", "কমপ্লায়েন্স"],
+      },
+    ]
+  }
+};
 
 const SOCIALS = [
   { icon: MessageCircle, href: "#", label: "Twitter/X"  },
@@ -31,10 +164,10 @@ const SOCIALS = [
   { icon: Mail,          href: "#", label: "Email"      },
 ];
 
-import { useTranslation } from "@/context/LanguageContext";
-
 export default function Footer() {
-  const { t, isRtl } = useTranslation();
+  const { language, t, isRtl } = useTranslation();
+  const code = language.code;
+  const labels = FOOTER_I18N[code] || FOOTER_I18N.EN;
 
   const stats = [
     { value: "200+",    label: t("footerStatsCountries") },
@@ -121,7 +254,7 @@ export default function Footer() {
               <span className="text-lg font-black tracking-tighter text-white">APPSMINER</span>
             </Link>
             <p className="text-gray-600 text-sm leading-relaxed mb-8">
-              Industrial-grade ASIC mining hardware, institutional trading, and enterprise-level asset security.
+              {labels.desc}
             </p>
             {/* Socials */}
             <div className="flex gap-3">
@@ -140,11 +273,11 @@ export default function Footer() {
           </div>
 
           {/* Nav columns */}
-          {NAV_COLS.map((col) => (
+          {labels.navCols.map((col: any) => (
             <div key={col.title}>
               <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-500 mb-5">{col.title}</h4>
               <ul className="space-y-3">
-                {col.links.map((link) => (
+                {col.links.map((link: string) => (
                   <li key={link}>
                     <Link
                       href="#"
