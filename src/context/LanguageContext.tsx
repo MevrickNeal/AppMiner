@@ -51,7 +51,7 @@ const translations = {
     heroIntroTitleWith: "With",
     heroIntroTitleAbsolute: "Absolute",
     heroIntroTitlePower: "Power",
-    heroIntroSub: "Experience industrial-grade hashpower with AppsMiner. Unmatched efficiency, seamless scaling, and absolute control.",
+    heroIntroSub: "Experience industrial-grade hashpower with appsminers. Unmatched efficiency, seamless scaling, and absolute control.",
     heroIntroShop: "Shop Now",
     heroIntroLearn: "Learn More",
 
@@ -110,7 +110,7 @@ const translations = {
     servicesHeading: "Financial Infrastructure",
     servicesTitle1: "Institutional",
     servicesTitle2: "Trading & Storage",
-    servicesDesc: "Beyond mining, Apps Miner offers an enterprise-grade crypto trading house and hybrid hot/cold wallet service.",
+    servicesDesc: "Beyond mining, appsminers offers an enterprise-grade crypto trading house and hybrid hot/cold wallet service.",
     servicesTradingHouseTitle: "Crypto Trading House",
     servicesTradingHouseDesc: "Execute high-volume trades with zero slippage. Our matching engine handles millions of transactions per second, providing diamond-grade liquidity.",
     servicesTradingHouseFeat1: "0.05% Maker/Taker Fees",
@@ -136,7 +136,7 @@ const translations = {
     researchTitle: "Silicon Research Lab",
     researchHeading: "Silicon Innovation",
     researchSub: "Pushing the boundaries of thermodynamic hashing efficiency on a custom 5nm TSMC process node.",
-    researchParagraph1: "Through direct collaboration with global semiconductor foundries, AppsMiner custom designs ASIC chip microarchitectures specifically optimized for SHA-256 logic gates. By pruning non-essential instruction sets at the hardware layout level, we achieve up to 40% higher efficiency than off-the-shelf mining hardware.",
+    researchParagraph1: "Through direct collaboration with global semiconductor foundries, appsminers custom designs ASIC chip microarchitectures specifically optimized for SHA-256 logic gates. By pruning non-essential instruction sets at the hardware layout level, we achieve up to 40% higher efficiency than off-the-shelf mining hardware.",
     researchParagraph2: "Our current research focus lies in liquid-cooled multi-die modules that dissipate heat directly through synthetic dielectric fluid loops. This engineering breakthrough allows custom silicon dies to run at peak speeds with zero thermal throttling, extending the overall hardware lifetime to over 5 years.",
 
     // Login Page
@@ -278,7 +278,7 @@ const translations = {
     researchTitle: "مختبر أبحاث السيليكون",
     researchHeading: "ابتكار السيليكون",
     researchSub: "دفع حدود كفاءة التجزئة الحرارية على عقدة عملية 5nm TSMC مخصصة.",
-    researchParagraph1: "من خلال التعاون المباشر مع مصانع أشباه الموصلات العالمية، تقوم AppsMiner بتصميم هياكل رقاقات ASIC الدقيقة المخصصة خصيصًا لبوابات منطق SHA-256. ومن خلال إزالة مجموعات التعليمات غير الأساسية، نحقق كفاءة أعلى بنسبة تصل إلى 40% مقارنة بأجهزة التعدين العادية.",
+    researchParagraph1: "من خلال التعاون المباشر مع مصانع أشباه الموصلات العالمية، تقوم appsminers بتصميم هياكل رقاقات ASIC الدقيقة المخصصة خصيصًا لبوابات منطق SHA-256. ومن خلال إزالة مجموعات التعليمات غير الأساسية، نحقق كفاءة أعلى بنسبة تصل إلى 40% مقارنة بأجهزة التعدين العادية.",
     researchParagraph2: "ينصب تركيزنا البحثي الحالي على الوحدات متعددة القوالب المبردة بالسوائل والتي تبدد الحرارة مباشرة من خلال حلقات السوائل الاصطناعية. يتيح ذلك تشغيل الرقاقات بأقصى سرعات دون اختناق حراري، مما يطيل عمر الأجهزة لأكثر من 5 سنوات.",
 
     // Login Page
@@ -420,7 +420,7 @@ const translations = {
     researchTitle: "सिलिकॉन अनुसंधान प्रयोगशाला",
     researchHeading: "सिलिकॉन नवाचार",
     researchSub: "कस्टम 5nm TSMC प्रोसेस नोड पर थर्मोडायनामिक हैशिंग दक्षता की सीमाओं को आगे बढ़ाना।",
-    researchParagraph1: "वैश्विक सेमीकंडक्टर फाउंड्री के साथ सीधे सहयोग के माध्यम से, AppsMiner विशेष रूप से SHA-256 लॉजिक गेट्स के लिए अनुकूलित ASIC चिप माइक्रोआर्किटेक्चर को कस्टम डिज़ाइन करता है। हार्डवेयर लेआउट स्तर पर गैर-आवश्यक निर्देश सेटों को हटाकर, हम सामान्य हार्डवेयर की तुलना में 40% तक अधिक दक्षता प्राप्त करते हैं।",
+    researchParagraph1: "वैश्विक सेमीकंडक्टर फाउंड्री के साथ सीधे सहयोग के माध्यम से, appsminers विशेष रूप से SHA-256 लॉजिक गेट्स के लिए अनुकूलित ASIC चिप माइक्रोआर्किटेक्चर को कस्टम डिज़ाइन करता है। हार्डवेयर लेआउट स्तर पर गैर-आवश्यक निर्देश सेटों को हटाकर, हम सामान्य हार्डवेयर की तुलना में 40% तक अधिक दक्षता प्राप्त करते हैं।",
     researchParagraph2: "हमारा वर्तमान अनुसंधान फोकस लिक्विड-कूल्ड मल्टी-डाई मॉड्यूल पर है जो सीधे सिंथेटिक डाइइलेक्ट्रिक लिक्विड लूप के माध्यम से गर्मी को फैलाते हैं। यह इंजीनियरिंग सफलता कस्टम सिलिकॉन डाई को बिना थर्मल थ्रॉटलिंग के चरम गति पर चलाने की अनुमति देती है, जिससे हार्डवेयर का जीवन 5 वर्ष से अधिक हो जाता है।",
 
     // Login Page
@@ -477,7 +477,7 @@ const translations = {
     heroIntroTitleWith: "mit",
     heroIntroTitleAbsolute: "absoluter",
     heroIntroTitlePower: "Power",
-    heroIntroSub: "Erleben Sie Hashing-Power auf Industrieniveau mit AppsMiner. Unübertroffene Effizienz, nahtlose Skalierung und absolute Kontrolle.",
+    heroIntroSub: "Erleben Sie Hashing-Power auf Industrieniveau mit appsminers. Unübertroffene Effizienz, nahtlose Skalierung und absolute Kontrolle.",
     heroIntroShop: "Jetzt Kaufen",
     heroIntroLearn: "Mehr erfahren",
 
@@ -536,7 +536,7 @@ const translations = {
     servicesHeading: "Finanzielle Infrastruktur",
     servicesTitle1: "Institutioneller",
     servicesTitle2: "Handel & Aufbewahrung",
-    servicesDesc: "Neben Mining bietet Apps Miner eine Krypto-Handelsplattform der Enterprise-Klasse und hybride Wallet-Dienste.",
+    servicesDesc: "Neben Mining bietet appsminers eine Krypto-Handelsplattform der Enterprise-Klasse und hybride Wallet-Dienste.",
     servicesTradingHouseTitle: "Krypto-Handelshaus",
     servicesTradingHouseDesc: "Führen Sie Großaufträge ohne Slippage aus. Unsere Matching-Engine verarbeitet Millionen Transaktionen pro Sekunde mit exzellenter Liquidität.",
     servicesTradingHouseFeat1: "0,05% Maker/Taker-Gebühren",
@@ -562,7 +562,7 @@ const translations = {
     researchTitle: "Silizium-Forschungslabor",
     researchHeading: "Silizium-Innovation",
     researchSub: "Maximierung der thermodynamischen Hashing-Effizienz auf einem kundenspezifischen 5nm-TSMC-Prozessknoten.",
-    researchParagraph1: "In direkter Zusammenarbeit mit globalen Halbleiter-Foundries entwirft AppsMiner maßgeschneiderte ASIC-Mikroarchitekturen, die speziell für SHA-256-Logikgatter optimiert sind. Durch das Entfernen unnötiger Befehlssätze auf Hardware-Ebene erzielen wir eine bis zu 40% höhere Effizienz als Standard-Hardware.",
+    researchParagraph1: "In direkter Zusammenarbeit mit globalen Halbleiter-Foundries entwirft appsminers maßgeschneiderte ASIC-Mikroarchitekturen, die speziell für SHA-256-Logikgatter optimiert sind. Durch das Entfernen unnötiger Befehlssätze auf Hardware-Ebene erzielen wir eine bis zu 40% höhere Effizienz als Standard-Hardware.",
     researchParagraph2: "Unser aktueller Forschungsschwerpunkt liegt auf flüssigkeitsgekühlten Multi-Die-Modulen, die Wärme direkt über synthetische Flüssigkeitskreisläufe ableiten. Dadurch können die Silizium-Dies ohne thermische Drosselung auf Höchstgeschwindigkeit laufen, was die Lebensdauer auf über 5 Jahre verlängert.",
 
     // Login Page
@@ -619,7 +619,7 @@ const translations = {
     heroIntroTitleWith: "avec une",
     heroIntroTitleAbsolute: "Puissance",
     heroIntroTitlePower: "Absolue",
-    heroIntroSub: "Faites l'expérience d'une puissance de hachage de niveau industriel avec AppsMiner. Une efficacité inégalée, une mise à l'échelle transparente et un contrôle absolu.",
+    heroIntroSub: "Faites l'expérience d'une puissance de hachage de niveau industriel avec appsminers. Une efficacité inégalée, une mise à l'échelle transparente et un contrôle absolu.",
     heroIntroShop: "Acheter",
     heroIntroLearn: "En savoir plus",
 
@@ -678,7 +678,7 @@ const translations = {
     servicesHeading: "Infrastructure Financière",
     servicesTitle1: "Trading & Stockage",
     servicesTitle2: "Institutionnel",
-    servicesDesc: "Au-delà du minage, Apps Miner propose une plateforme de trading crypto de niveau entreprise et un service de portefeuille hybride chaud/froid.",
+    servicesDesc: "Au-delà du minage, appsminers propose une plateforme de trading crypto de niveau entreprise et un service de portefeuille hybride chaud/froid.",
     servicesTradingHouseTitle: "Maison de Trading Crypto",
     servicesTradingHouseDesc: "Exécutez des transactions à gros volumes sans glissement. Notre moteur d'appariement gère des millions de transactions par seconde, offrant une liquidité de premier ordre.",
     servicesTradingHouseFeat1: "0,05% Frais Maker/Taker",
@@ -704,7 +704,7 @@ const translations = {
     researchTitle: "Laboratoire de Recherche Silicium",
     researchHeading: "Silicon Innovation",
     researchSub: "Repousser les limites de l'efficacité thermodynamique du hachage sur un nœud de gravure personnalisé de 5nm par TSMC.",
-    researchParagraph1: "Grâce à une collaboration directe avec les fonderies mondiales de semi-conducteurs, AppsMiner conçoit des microarchitectures de puces ASIC optimisées spécifiquement pour les portes logiques SHA-256. En élaguant les jeux d'instructions superflus, nous obtenons une efficacité supérieure de 40% par rapport au matériel standard.",
+    researchParagraph1: "Grâce à une collaboration directe avec les fonderies mondiales de semi-conducteurs, appsminers conçoit des microarchitectures de puces ASIC optimisées spécifiquement pour les portes logiques SHA-256. En élaguant les jeux d'instructions superflus, nous obtenons une efficacité supérieure de 40% par rapport au matériel standard.",
     researchParagraph2: "Nos recherches actuelles portent sur des modules multi-puces refroidis par liquide, dissipant la chaleur par le biais de boucles de fluide diélectrique synthétique. Cette percée permet aux puces de tourner à plein régime sans étranglement thermique, prolongeant la durée de vie à plus de 5 ans.",
 
     // Login Page
@@ -761,7 +761,7 @@ const translations = {
     heroIntroTitleWith: "con",
     heroIntroTitleAbsolute: "Poder",
     heroIntroTitlePower: "Absoluto",
-    heroIntroSub: "Experimente el poder de hash de grado industrial con AppsMiner. Eficiencia inigualable, escalabilidad sin problemas y control absoluto.",
+    heroIntroSub: "Experimente el poder de hash de grado industrial con appsminers. Eficiencia inigualable, escalabilidad sin problemas y control absoluto.",
     heroIntroShop: "Comprar Ahora",
     heroIntroLearn: "Saber Más",
 
@@ -820,7 +820,7 @@ const translations = {
     servicesHeading: "Infraestructura Financiera",
     servicesTitle1: "Trading y Almacenamiento",
     servicesTitle2: "Institucional",
-    servicesDesc: "Más allá de la minería, Apps Miner ofrece una casa de trading de criptomonedas de nivel empresarial y un servicio de billetera híbrida.",
+    servicesDesc: "Más allá de la minería, appsminers ofrece una casa de trading de criptomonedas de nivel empresarial y un servicio de billetera híbrida.",
     servicesTradingHouseTitle: "Casa de Trading Crypto",
     servicesTradingHouseDesc: "Ejecute operaciones de gran volumen sin deslizamiento. Nuestro motor de emparejamiento maneja millones de transacciones por segundo, ofreciendo una liquidez excelente.",
     servicesTradingHouseFeat1: "0.05% Tarifas Maker/Taker",
@@ -846,7 +846,7 @@ const translations = {
     researchTitle: "Laboratorio de Investigación de Silicio",
     researchHeading: "Innovación de Silicio",
     researchSub: "Superando los límites de la eficiencia de hash termodinámica en un nodo de proceso TSMC de 5nm personalizado.",
-    researchParagraph1: "A través de la colaboración directa con fundiciones globales de semiconductores, AppsMiner diseña microarquitecturas de chips ASIC optimizadas específicamente para puertas lógicas SHA-256. Al eliminar conjuntos de instrucciones innecesarios a nivel de diseño, logramos un 40% más de eficiencia que el hardware comercial.",
+    researchParagraph1: "A través de la colaboración directa con fundiciones globales de semiconductores, appsminers diseña microarquitecturas de chips ASIC optimizadas específicamente para puertas lógicas SHA-256. Al eliminar conjuntos de instrucciones innecesarios a nivel de diseño, logramos un 40% más de eficiencia que el hardware comercial.",
     researchParagraph2: "Nuestra investigación actual se centra en módulos multi-die refrigerados por líquido que disipan el calor a través de bucles de fluido sintético. Este avance permite que los chips funcionen a velocidades máximas sin estrangulamiento térmico, extendiendo la vida útil a más de 5 años.",
 
     // Login Page
@@ -988,7 +988,7 @@ const translations = {
     researchTitle: "সিলিকন রিসার্চ ল্যাব",
     researchHeading: "সিলিকন ইনোভেশন",
     researchSub: "একটি কাস্টম ৫nm TSMC প্রসেস নোডে থার্মোডায়নামিক হ্যাশিং কার্যকারিতার সীমানা অতিক্রম করা হচ্ছে।",
-    researchParagraph1: "বৈশ্বিক সেমিকন্ডাক্টর ফাউন্ড্রিগুলোর সাথে সরাসরি সহযোগিতার মাধ্যমে, AppsMiner সরাসরি SHA-256 লজিক গেটের জন্য অপ্টিমাইজ করা কাস্টম ASIC চিপ মাইক্রোআর্কিটেকচার ডিজাইন করে। হার্ডওয়্যার লেআউট স্তর থেকে অপ্রয়োজনীয় নির্দেশাবলী বাদ দিয়ে, আমরা সাধারণ হার্ডওয়্যারের চেয়ে ৪০% পর্যন্ত বেশি কার্যকারিতা অর্জন করি।",
+    researchParagraph1: "বৈশ্বিক সেমিকন্ডাক্টর ফাউন্ড্রিগুলোর সাথে সরাসরি সহযোগিতার মাধ্যমে, appsminers সরাসরি SHA-256 লজিক গেটের জন্য অপ্টিমাইজ করা কাস্টম ASIC চিপ মাইক্রোআর্কিটেকচার ডিজাইন করে। হার্ডওয়্যার লেআউট স্তর থেকে অপ্রয়োজনীয় নির্দেশাবলী বাদ দিয়ে, আমরা সাধারণ হার্ডওয়্যারের চেয়ে ৪০% পর্যন্ত বেশি কার্যকারিতা অর্জন করি।",
     researchParagraph2: "আমাদের বর্তমান গবেষণা তরল-শীতল (liquid-cooled) মাল্টি-ডাই মডিউলের উপর যা সরাসরি সিন্থেটিক তরল লুপের মাধ্যমে তাপ অপসারণ করে। এই প্রকৌশলগত সাফল্য চিপগুলোকে কোনো থار্মাল থ্রটলিং ছাড়াই সর্বোচ্চ গতিতে কাজ করতে দেয়, যা হার্ডওয়্যারের জীবনকাল ৫ বছরের বেশি বাড়িয়ে দেয়।",
 
     // Login Page

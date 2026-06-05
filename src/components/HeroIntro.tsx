@@ -1,10 +1,33 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "@/context/LanguageContext";
 
 export default function HeroIntro() {
   const { t, isRtl } = useTranslation();
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash) {
+      const id = window.location.hash.substring(1);
+      const element = document.getElementById(id);
+      if (element) {
+        const timer = setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth" });
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, []);
+
+  const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+      window.history.pushState(null, "", `#${id}`);
+    }
+  };
 
   return (
     // ── Light section: off-white, explicit bg so it never bleeds ──
@@ -66,12 +89,20 @@ export default function HeroIntro() {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="mt-10 flex flex-wrap gap-4 justify-center"
         >
-          <button className="px-8 py-4 bg-black text-white rounded-full text-[11px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-transform shadow-xl">
+          <a 
+            href="#products" 
+            onClick={(e) => handleScroll(e, "products")}
+            className="px-8 py-4 bg-black text-white rounded-full text-[11px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl block text-center"
+          >
             {t("heroIntroShop")}
-          </button>
-          <button className="px-8 py-4 glass-panel text-black rounded-full text-[11px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-transform">
+          </a>
+          <a 
+            href="#features" 
+            onClick={(e) => handleScroll(e, "features")}
+            className="px-8 py-4 glass-panel text-black rounded-full text-[11px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all block text-center"
+          >
             {t("heroIntroLearn")}
-          </button>
+          </a>
         </motion.div>
       </div>
     </div>

@@ -359,7 +359,7 @@ export default function Dashboard() {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (session) {
-          setUserEmail(session.user?.email || "operator@appsminer.com");
+          setUserEmail(session.user?.email || "operator@appsminers.com");
           
           // Check if admin
           const { data: profile } = await supabase
@@ -399,7 +399,7 @@ export default function Dashboard() {
         if (!session) {
           router.push("/login");
         } else {
-          setUserEmail(session.user?.email || "operator@appsminer.com");
+          setUserEmail(session.user?.email || "operator@appsminers.com");
         }
       });
       subscription = authRes.data?.subscription;
@@ -465,7 +465,7 @@ export default function Dashboard() {
           <div className="relative w-16 h-16 animate-pulse">
             <Image
               src="/Products/icon blue.png"
-              alt="AppsMiner Logo"
+              alt="appsminers Logo"
               fill
               className="object-contain"
             />
@@ -494,13 +494,13 @@ export default function Dashboard() {
           <div className="relative w-9 h-9">
             <Image
               src="/Products/icon blue.png"
-              alt="AppsMiner"
+              alt="appsminers"
               fill
               className="object-contain"
             />
           </div>
           <div>
-            <span className="text-lg font-black tracking-tighter text-white block leading-none">APPSMINER</span>
+            <span className="text-lg font-black tracking-tighter text-white block leading-none">appsminers</span>
             <span className="text-[9px] font-bold text-[#00f2ff] tracking-widest uppercase">{t("dashSecuredTerminal")}</span>
           </div>
         </div>

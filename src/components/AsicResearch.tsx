@@ -37,7 +37,7 @@ export default function AsicResearch() {
             <div className="space-y-6 text-gray-500 font-medium text-sm leading-relaxed max-w-2xl">
               <p>
                 {t("researchParagraph1" as any) ||
-                  "Through direct collaboration with global semiconductor foundries, AppsMiner custom designs ASIC chip microarchitectures specifically optimized for SHA-256 logic gates. By pruning non-essential instruction sets at the hardware layout level, we achieve up to 40% higher efficiency than off-the-shelf mining hardware."}
+                  "Through direct collaboration with global semiconductor foundries, appsminers custom designs ASIC chip microarchitectures specifically optimized for SHA-256 logic gates. By pruning non-essential instruction sets at the hardware layout level, we achieve up to 40% higher efficiency than off-the-shelf mining hardware."}
               </p>
               <p>
                 {t("researchParagraph2" as any) ||
@@ -88,7 +88,7 @@ export default function AsicResearch() {
                 {/* Tech overlay markings */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
                 <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center text-[9px] font-mono text-white/50 tracking-wider">
-                  <span>APPSMINER // LAB 02</span>
+                  <span>appsminers // LAB 02</span>
                   <span>5NM ASIC DIE VERIFICATION</span>
                 </div>
               </div>

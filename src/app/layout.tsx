@@ -28,7 +28,7 @@ const hindSiliguri = Hind_Siliguri({
 });
 
 export const metadata: Metadata = {
-  title: "Apps Miner | Digital Fortress",
+  title: "appsminers | Digital Fortress",
   description: "The world's most sophisticated mining ecosystem. Enterprise ASIC infrastructure meets diamond-grade liquidity.",
   icons: {
     icon: "/Products/icon blue.png",

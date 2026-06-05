@@ -13,7 +13,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "Products",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
       },
       {
         title: "Services",
@@ -34,7 +34,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "المنتجات",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
       },
       {
         title: "الخدمات",
@@ -55,7 +55,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "उत्पाद",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
       },
       {
         title: "सेवाएं",
@@ -76,7 +76,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "Produkte",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
       },
       {
         title: "Services",
@@ -97,7 +97,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "Produits",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
       },
       {
         title: "Services",
@@ -118,7 +118,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "Productos",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
       },
       {
         title: "Servicios",
@@ -139,7 +139,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "পণ্যসমূহ",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "Appsminer Mini", "Appsminer Nano", "Appsminer Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
       },
       {
         title: "সেবাসমূহ",
@@ -168,6 +168,72 @@ export default function Footer() {
   const { language, t, isRtl } = useTranslation();
   const code = language.code;
   const labels = FOOTER_I18N[code] || FOOTER_I18N.EN;
+
+  const getFooterLinkHref = (link: string) => {
+    const lower = link.toLowerCase();
+    
+    // Products
+    if (lower.includes("pro") || lower.includes("mini") || lower.includes("nano") || lower.includes("pocket")) {
+      if (lower.includes("pro") || lower.includes("t200") || lower.includes("f100") || lower.includes("f50")) {
+        return "/#flagship-series";
+      }
+      return "/#micro-series";
+    }
+    
+    // Services
+    if (
+      lower.includes("pool") || 
+      lower.includes("tread") || 
+      lower.includes("trad") || 
+      lower.includes("wal") || 
+      lower.includes("stor") || 
+      lower.includes("api") ||
+      lower.includes("পুল") ||
+      lower.includes("ট্রেড") ||
+      lower.includes("ওয়ালেট") ||
+      lower.includes("স্টোরেজ") ||
+      lower.includes("تداول") ||
+      lower.includes("محفظة") ||
+      lower.includes("تعدين") ||
+      lower.includes("خزنة")
+    ) {
+      return "/#services";
+    }
+    
+    // Company / FAQ
+    if (
+      lower.includes("about") || 
+      lower.includes("blog") || 
+      lower.includes("career") || 
+      lower.includes("press") || 
+      lower.includes("contact") ||
+      lower.includes("আমাদের") ||
+      lower.includes("যোগাযোগ") ||
+      lower.includes("من نحن") ||
+      lower.includes("اتصل") ||
+      lower.includes("करियर") ||
+      lower.includes("संपर्क")
+    ) {
+      return "/#features";
+    }
+    
+    // Legal
+    if (
+      lower.includes("privac") || 
+      lower.includes("term") || 
+      lower.includes("cooki") || 
+      lower.includes("complian") ||
+      lower.includes("নীতি") ||
+      lower.includes("শর্ত") ||
+      lower.includes("خصوصية") ||
+      lower.includes("شروط") ||
+      lower.includes("कानूनी")
+    ) {
+      return "/login";
+    }
+    
+    return "/#products";
+  };
 
   const stats = [
     { value: "200+",    label: t("footerStatsCountries") },
@@ -204,7 +270,7 @@ export default function Footer() {
           </div>
           <div className="flex flex-col sm:flex-row gap-4 flex-shrink-0">
             <motion.a
-              href="#"
+              href="/login"
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
               className="px-8 py-4 bg-white text-black rounded-full text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#00f2ff] transition-colors"
@@ -212,7 +278,7 @@ export default function Footer() {
               {t("footerCtaGetStarted")} <ArrowUpRight size={14} />
             </motion.a>
             <motion.a
-              href="#"
+              href="/#products"
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
               className="px-8 py-4 glass-card-dark rounded-full text-[11px] font-black uppercase tracking-widest flex items-center gap-2 border border-white/10 hover:border-white/30 transition-colors"
@@ -246,12 +312,12 @@ export default function Footer() {
               <div className="relative w-10 h-10 bg-white rounded-xl overflow-hidden flex-shrink-0">
                 <Image
                   src="/Products/icon blue.png"
-                  alt="AppsMiner icon"
+                  alt="appsminers icon"
                   fill
                   className="object-contain p-1"
                 />
               </div>
-              <span className="text-lg font-black tracking-tighter text-white">APPSMINER</span>
+              <span className="text-lg font-black tracking-tighter text-white">appsminers</span>
             </Link>
             <p className="text-gray-600 text-sm leading-relaxed mb-8">
               {labels.desc}
@@ -280,7 +346,7 @@ export default function Footer() {
                 {col.links.map((link: string) => (
                   <li key={link}>
                     <Link
-                      href="#"
+                      href={getFooterLinkHref(link)}
                       className="text-sm font-medium text-gray-500 hover:text-white transition-colors hover:translate-x-1 inline-block transition-transform duration-200"
                     >
                       {link}
@@ -302,13 +368,13 @@ export default function Footer() {
             <div className="relative w-9 h-9 flex-shrink-0">
               <Image
                 src="/Products/icon blue.png"
-                alt="AppsMiner"
+                alt="appsminers"
                 fill
                 className="object-contain"
               />
             </div>
             <span className="text-gray-600 text-xs font-medium">
-              © {new Date().getFullYear()} AppsMiner. {t("footerAllRightsReserved")}
+              © {new Date().getFullYear()} appsminers. {t("footerAllRightsReserved")}
             </span>
           </div>
 

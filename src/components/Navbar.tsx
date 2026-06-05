@@ -15,6 +15,17 @@ export default function Navbar() {
   const pathname = usePathname();
   const { language, setLanguage, t, isRtl } = useTranslation();
 
+  const handleHashClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("/#") && pathname === "/") {
+      e.preventDefault();
+      const id = href.replace("/#", "");
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  };
+
   // Hide global navbar on dashboard or login pages to avoid layout conflicts
   if (pathname === "/dashboard" || pathname === "/login") {
     return null;
@@ -38,23 +49,23 @@ export default function Navbar() {
               <div className="relative w-9 h-9 flex-shrink-0">
                 <Image
                   src="/Products/icon blue.png"
-                  alt="AppsMiner icon"
+                  alt="appsminers icon"
                   fill
                   className="object-contain"
                 />
               </div>
               <span className="text-xl font-black tracking-tighter text-black group-hover:text-gray-700 transition-colors">
-                APPSMINER
+                appsminers
               </span>
             </Link>
           </div>
 
-          {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-10">
             {navLinks.map((link) => (
               <Link
                 key={link.labelKey}
                 href={link.href}
+                onClick={(e) => handleHashClick(e, link.href)}
                 className="text-[11px] font-black uppercase tracking-widest text-gray-500 hover:text-black transition-colors"
               >
                 {t(link.labelKey)}
@@ -143,19 +154,22 @@ export default function Navbar() {
               <div className="relative w-8 h-8 flex-shrink-0">
                 <Image
                   src="/Products/icon blue.png"
-                  alt="AppsMiner icon"
+                  alt="appsminers icon"
                   fill
                   className="object-contain"
                 />
               </div>
-              <span className="text-base font-black tracking-tighter text-black">APPSMINER</span>
+              <span className="text-base font-black tracking-tighter text-black">appsminers</span>
             </div>
 
             {navLinks.map((link) => (
               <Link
                 key={link.labelKey}
                 href={link.href}
-                onClick={() => setMobileOpen(false)}
+                onClick={(e) => {
+                  setMobileOpen(false);
+                  handleHashClick(e, link.href);
+                }}
                 className="text-lg font-black uppercase tracking-widest text-black"
               >
                 {t(link.labelKey)}

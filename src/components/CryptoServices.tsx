@@ -2,6 +2,7 @@
 
 import { Shield, Wallet, Repeat } from "lucide-react";
 import { useTranslation } from "@/context/LanguageContext";
+import Link from "next/link";
 
 export default function CryptoServices() {
   const { t, isRtl } = useTranslation();
@@ -42,9 +43,9 @@ export default function CryptoServices() {
                 </li>
               ))}
             </ul>
-            <button className="px-8 py-4 bg-white text-black hover:bg-[#00f2ff] rounded-full text-[11px] font-black tracking-widest uppercase transition-colors w-full hover:scale-[1.02] transition-all">
+            <Link href="/login" className="px-8 py-4 bg-white text-black hover:bg-[#00f2ff] rounded-full text-[11px] font-black tracking-widest uppercase transition-colors w-full hover:scale-[1.02] transition-all block text-center">
               {t("servicesTradingHouseCta")}
-            </button>
+            </Link>
           </div>
 
           {/* Hybrid Wallets */}
@@ -62,9 +63,9 @@ export default function CryptoServices() {
                 </li>
               ))}
             </ul>
-            <button className="px-8 py-4 bg-white text-black hover:bg-[#00f2ff] rounded-full text-[11px] font-black tracking-widest uppercase transition-colors w-full hover:scale-[1.02] transition-all">
+            <Link href="/login" className="px-8 py-4 bg-white text-black hover:bg-[#00f2ff] rounded-full text-[11px] font-black tracking-widest uppercase transition-colors w-full hover:scale-[1.02] transition-all block text-center">
               {t("servicesWalletCta")}
-            </button>
+            </Link>
           </div>
         </div>
       </div>

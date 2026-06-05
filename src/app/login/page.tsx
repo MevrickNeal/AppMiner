@@ -208,7 +208,7 @@ export default function Login() {
               <div className="relative w-14 h-14">
                 <Image
                   src="/Products/icon blue.png"
-                  alt="AppsMiner"
+                  alt="appsminers"
                   fill
                   className="object-contain"
                 />
@@ -404,7 +404,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-11 pr-4 text-white placeholder:text-gray-700 focus:outline-none focus:border-[#00f2ff]/60 transition-colors text-sm"
-                  placeholder="you@appsminer.com"
+                  placeholder="you@appsminers.com"
                 />
               </div>
             </div>

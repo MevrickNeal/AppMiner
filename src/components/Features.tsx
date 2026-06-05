@@ -13,7 +13,7 @@ export default function Features() {
   ];
 
   return (
-    <section className="bg-[#080808] py-24 text-white border-t border-white/5">
+    <section id="features" className="bg-[#080808] py-24 text-white border-t border-white/5">
       <div className="max-w-[1400px] mx-auto px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
           {stats.map((s) => (
