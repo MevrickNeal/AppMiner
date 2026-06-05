@@ -361,7 +361,7 @@ function BalanceMeter({ hot, cold, labels }: { hot: number; cold: number; labels
   );
 }
 
-export default function WalletServices() {
+export default function WalletServices({ btcPrice = 64250 }: { btcPrice?: number }) {
   const { language, isRtl } = useTranslation();
   const code = language.code;
   const labels = WALLET_I18N[code] || WALLET_I18N.EN;
@@ -391,8 +391,8 @@ export default function WalletServices() {
     : (vaultUnlocked ? "38.9210 BTC" : "••.•••• BTC");
     
   const activeUsd = activeWallet === "hot" 
-    ? "$274,139" 
-    : (vaultUnlocked ? "$2,491,944" : "$•,•••,•••");
+    ? `$${(4.2831 * btcPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}` 
+    : (vaultUnlocked ? `$${(38.9210 * btcPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "$•,•••,•••");
     
   const activeStats = activeWallet === "hot" ? labels.hotStats : labels.coldStats;
   const activeFeatures = activeWallet === "hot" ? labels.hotFeatures : labels.coldFeatures;
@@ -520,9 +520,24 @@ export default function WalletServices() {
                 <p className="text-3xl font-black mb-1" style={{ color: activeAccentColor }}>
                   {showBalance ? activeBalance : "••••• BTC"}
                 </p>
-                <p className="text-gray-600 text-sm font-bold mb-6">
-                  {showBalance ? activeUsd : "$•••,•••"}
-                </p>
+                <div className="flex justify-between items-center mb-6">
+                  <p className="text-gray-600 text-sm font-bold">
+                    {showBalance ? activeUsd : "$•••,•••"}
+                  </p>
+                  {showBalance && (
+                    <span 
+                      className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full flex items-center gap-1.5 border"
+                      style={{ 
+                        color: activeAccentColor, 
+                        borderColor: `${activeAccentColor}33`,
+                        background: `${activeAccentColor}08`
+                      }}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: activeAccentColor }} />
+                      Live Rate
+                    </span>
+                  )}
+                </div>
 
                 {/* Mini stats */}
                 <div className="grid grid-cols-3 gap-3 mb-4">

@@ -323,6 +323,26 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"overview" | "mining" | "wallet" | "settings" | "admin" | "purchases" | "support">("overview");
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState("");
+  
+  // Real-time live Bitcoin price state
+  const [btcPrice, setBtcPrice] = useState(64250);
+
+  useEffect(() => {
+    async function fetchBtcPrice() {
+      try {
+        const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
+        const data = await res.json();
+        if (data?.bitcoin?.usd) {
+          setBtcPrice(data.bitcoin.usd);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch live BTC price:", err);
+      }
+    }
+    fetchBtcPrice();
+    const interval = setInterval(fetchBtcPrice, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const navItems = [
     { id: "overview", label: t("navOverview"), icon: LayoutDashboard },
@@ -698,9 +718,12 @@ export default function Dashboard() {
                 <div className="glass-card p-6 border border-white/10 relative overflow-hidden group">
                   <div className="absolute top-0 left-0 h-1 bg-amber-500 w-full transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
                   <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{t("dashWalletValue")}</p>
-                  <h3 className="text-3xl font-black text-[#00f2ff]">$2,766,083 USD</h3>
-                  <div className="mt-4 flex items-center gap-2 text-xs text-gray-400 font-bold">
+                  <h3 className="text-3xl font-black text-[#00f2ff]">
+                    ${(43.2041 * btcPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })} USD
+                  </h3>
+                  <div className="mt-4 flex items-center justify-between text-xs text-gray-400 font-bold">
                     <span>{l.btcTotal}</span>
+                    <span className="text-[10px] text-[#00f2ff]/80 uppercase tracking-wider">LIVE: ${btcPrice.toLocaleString()} / BTC</span>
                   </div>
                 </div>
 
@@ -772,7 +795,7 @@ export default function Dashboard() {
           {activeTab === "wallet" && (
             <div className="space-y-6">
               <div className="glass-card p-2 border border-white/5 bg-[#050505]/40">
-                <WalletServices />
+                <WalletServices btcPrice={btcPrice} />
               </div>
             </div>
           )}
