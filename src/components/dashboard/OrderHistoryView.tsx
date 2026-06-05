@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Package, Truck, Clock } from "lucide-react";
+import { Package, Clock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export default function OrderHistoryView() {
@@ -10,6 +10,24 @@ export default function OrderHistoryView() {
 
   useEffect(() => {
     async function loadPurchases() {
+      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+      if (isDemoMode) {
+        const localPurchasesStr = localStorage.getItem("appsminers_purchased_history");
+        if (localPurchasesStr) {
+          setPurchases(JSON.parse(localPurchasesStr));
+        } else {
+          // default initial purchase history
+          const defaultPurchases = [
+            { id: "demo-p1", product_name: "AppsMiners Pocket Pro", price_paid: 1299, status: "completed", created_at: new Date().toISOString() },
+            { id: "demo-p2", product_name: "AppsMiners Nano Premium", price_paid: 99, status: "completed", created_at: new Date(Date.now() - 86400000).toISOString() }
+          ];
+          localStorage.setItem("appsminers_purchased_history", JSON.stringify(defaultPurchases));
+          setPurchases(defaultPurchases);
+        }
+        setLoading(false);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
@@ -38,27 +56,33 @@ export default function OrderHistoryView() {
         </div>
       ) : (
         <div className="space-y-4">
-          {purchases.map((p) => (
-            <div key={p.id} className="p-5 bg-white/5 border border-white/10 rounded-2xl flex flex-col md:flex-row justify-between md:items-center gap-4 hover:bg-white/10 transition-colors">
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${p.is_preorder ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-400"}`}>
-                  {p.is_preorder ? <Clock size={20} /> : <Package size={20} />}
+          {purchases.map((p) => {
+            const isPreorder = p.status === "pending" || p.is_preorder;
+            const displayName = p.product_name || p.device_type || "Unknown Device";
+            const displayPrice = p.price_paid ? `$${Number(p.price_paid).toLocaleString()}` : "—";
+            
+            return (
+              <div key={p.id} className="p-5 bg-white/5 border border-white/10 rounded-2xl flex flex-col md:flex-row justify-between md:items-center gap-4 hover:bg-white/10 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isPreorder ? "bg-amber-500/10 text-amber-500" : "bg-emerald-500/10 text-emerald-400"}`}>
+                    {isPreorder ? <Clock size={20} /> : <Package size={20} />}
+                  </div>
+                  <div>
+                    <h4 className="text-white font-bold">{displayName}</h4>
+                    <p className="text-xs text-gray-400 mt-1">Order ID: <span className="font-mono text-gray-500">{p.id.split('-')[0]}</span></p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-white font-bold">{p.device_type}</h4>
-                  <p className="text-xs text-gray-400 mt-1">Order ID: <span className="font-mono text-gray-500">{p.id.split('-')[0]}</span></p>
+                <div className="text-right">
+                  <div className="text-sm font-black text-[#00f2ff]">{displayPrice}</div>
+                  <div className={`text-[10px] font-black uppercase tracking-widest mt-1 px-2 py-0.5 rounded-full inline-block ${
+                    isPreorder ? "bg-amber-500/20 text-amber-500" : "bg-emerald-500/20 text-emerald-400"
+                  }`}>
+                    {isPreorder ? "Pre-ordered (Shipping Soon)" : "Active"}
+                  </div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-sm font-black text-white">{p.quantity} Unit{p.quantity > 1 ? "s" : ""}</div>
-                <div className={`text-[10px] font-black uppercase tracking-widest mt-1 px-2 py-0.5 rounded-full inline-block ${
-                  p.is_preorder ? "bg-amber-500/20 text-amber-500" : "bg-emerald-500/20 text-emerald-400"
-                }`}>
-                  {p.is_preorder ? "Pre-ordered (Shipping Soon)" : "Active"}
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

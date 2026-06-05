@@ -1130,14 +1130,64 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
           setTimeout(async () => {
             setStep(5);
             try {
-              // Insert purchase
+              const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+              
+              const numericPrice = typeof product.price === "number" 
+                ? product.price 
+                : parseFloat(String(product.price).replace(/[^0-9.]/g, "")) || 0;
+
+              const cleanHashrate = product.hashrate || (product.id === "starter-kit" ? "2.15 TH/s" : "50 TH/s");
+              const cleanPower = product.id === "starter-kit" ? "185 W" : (product.id === "t200" ? "5,000 W" : product.id === "f100" ? "2,800 W" : product.id === "f50" ? "1,500 W" : product.id === "mini" ? "45 W" : product.id === "nano" ? "10 W" : "5 W");
+
+              if (isDemoMode) {
+                // Mock local storage purchase for nodes
+                const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
+                const currentNodes = localNodesStr ? JSON.parse(localNodesStr) : [
+                  { id: "demo-n1", productName: "AppsMiners Nano Premium", hashrate: "10 TH/s", power: "10 W", region: "Europe-West", status: "online" },
+                  { id: "demo-n2", productName: "AppsMiners Pocket Pro", hashrate: "110.2 TH/s", power: "550 W", region: "US-East", status: "online" },
+                  { id: "demo-n3", productName: "AppsMiners Mini Enterprise", hashrate: "220.5 TH/s", power: "1200 W", region: "Asia-Pacific", status: "online" }
+                ];
+                
+                const newNode = {
+                  id: "demo-n-" + Date.now(),
+                  productName: product.name,
+                  hashrate: cleanHashrate,
+                  power: cleanPower,
+                  region: region.split(" (")[0],
+                  status: "online"
+                };
+                localStorage.setItem("appsminers_purchased_nodes", JSON.stringify([newNode, ...currentNodes]));
+
+                // Mock local storage purchase history
+                const localPurchasesStr = localStorage.getItem("appsminers_purchased_history");
+                const currentPurchases = localPurchasesStr ? JSON.parse(localPurchasesStr) : [
+                  { id: "demo-p1", product_name: "AppsMiners Pocket Pro", price_paid: 1299, status: "completed", created_at: new Date().toISOString() },
+                  { id: "demo-p2", product_name: "AppsMiners Nano Premium", price_paid: 99, status: "completed", created_at: new Date(Date.now() - 86400000).toISOString() }
+                ];
+                
+                const newPurchase = {
+                  id: "demo-pur-" + Date.now(),
+                  product_id: product.id,
+                  product_name: product.name,
+                  price_paid: numericPrice,
+                  status: "completed",
+                  created_at: new Date().toISOString()
+                };
+                localStorage.setItem("appsminers_purchased_history", JSON.stringify([newPurchase, ...currentPurchases]));
+
+                onClose();
+                router.push(`/dashboard`);
+                return;
+              }
+
+              // Insert purchase to Supabase
               const { data: purchase, error: purchaseError } = await supabase
                 .from("purchases")
                 .insert({
                   user_id: session.user.id,
                   product_id: product.id,
                   product_name: product.name,
-                  price: product.price,
+                  price_paid: numericPrice,
                   status: "completed"
                 })
                 .select()
@@ -1145,15 +1195,15 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
                 
               if (purchaseError) throw purchaseError;
 
-              // Insert node
+              // Insert node to Supabase
               const { error: nodeError } = await supabase
                 .from("nodes")
                 .insert({
                   user_id: session.user.id,
                   purchase_id: purchase.id,
                   node_name: product.name + " Node",
-                  hashrate: product.hashrate || (product.id === "starter-kit" ? "2.15 TH/s" : "50 TH/s"),
-                  power: product.id === "starter-kit" ? "185 W" : (product.id === "t200" ? "5,000 W" : product.id === "f100" ? "2,800 W" : product.id === "f50" ? "1,500 W" : product.id === "mini" ? "45 W" : product.id === "nano" ? "10 W" : "5 W"),
+                  hashrate: cleanHashrate,
+                  power: cleanPower,
                   region: region.split(" (")[0],
                   status: "online"
                 });

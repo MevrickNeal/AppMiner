@@ -350,6 +350,23 @@ export default function MiningDashboard() {
 
     // Fetch real nodes from Supabase
     async function fetchNodes() {
+      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+      if (isDemoMode) {
+        const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
+        if (localNodesStr) {
+          setPurchasedNodes(JSON.parse(localNodesStr));
+        } else {
+          const defaultNodes = [
+            { id: "demo-n1", productName: "AppsMiners Nano Premium", hashrate: "10 TH/s", power: "10 W", region: "Europe-West", status: "online" },
+            { id: "demo-n2", productName: "AppsMiners Pocket Pro", hashrate: "110.2 TH/s", power: "550 W", region: "US-East", status: "online" },
+            { id: "demo-n3", productName: "AppsMiners Mini Enterprise", hashrate: "220.5 TH/s", power: "1200 W", region: "Asia-Pacific", status: "online" }
+          ];
+          localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(defaultNodes));
+          setPurchasedNodes(defaultNodes);
+        }
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 

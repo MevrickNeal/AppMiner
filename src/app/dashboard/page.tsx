@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Wallet, Cpu, LogOut, Shield, 
   Settings, Bell, ChevronRight, User, Terminal, Loader2,
   ShieldAlert, UserX, Activity, Database, AlertTriangle, Play, Square,
-  ShoppingBag, LifeBuoy
+  ShoppingBag, LifeBuoy, Globe
 } from "lucide-react";
 import MiningDashboard from "@/components/MiningDashboard";
 import WalletServices from "@/components/WalletServices";
@@ -326,6 +326,7 @@ export default function Dashboard() {
   
   // Real-time live Bitcoin price state
   const [btcPrice, setBtcPrice] = useState(64250);
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     async function fetchBtcPrice() {
@@ -378,15 +379,18 @@ export default function Dashboard() {
     async function checkUser() {
       try {
         const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+        setIsDemo(isDemoMode);
         if (isDemoMode) {
           setUserEmail("operator@appsminers.com");
           setIsAdmin(true);
           
           // Rich mock node and profile data for zero-config local demo mode
           setAllProfiles([
-            { id: "1", username: "Lian Mollick Nehal", is_admin: true, phone_number: "+8801700000000", country: "Bangladesh" },
-            { id: "2", username: "Alex Mercer", is_admin: false, phone_number: "+14155552671", country: "United States" },
-            { id: "3", username: "Fatima Al-Sudais", is_admin: false, phone_number: "+966501234567", country: "Saudi Arabia" }
+            { id: "1", username: "Lian Mollick Nehal", is_admin: true, phone_number: "+880-170-000-0000", country: "Bangladesh" },
+            { id: "2", username: "Alex Mercer", is_admin: false, phone_number: "+1-415-555-2671", country: "United States" },
+            { id: "3", username: "Fatima Al-Sudais", is_admin: false, phone_number: "+966-50-123-4567", country: "Saudi Arabia" },
+            { id: "4", username: "Dr. Elena Rostova", is_admin: false, phone_number: "+7-903-123-4567", country: "Russia" },
+            { id: "5", username: "Marcus Vance", is_admin: false, phone_number: "+44-20-7946-0192", country: "United Kingdom" }
           ]);
           setAllNodes([
             { id: "1", name: "Cluster-Alpha-1", status: "online", hashrate: 125.4 },
@@ -651,6 +655,16 @@ export default function Dashboard() {
               {l.adminConsole}
             </button>
           )}
+
+          <div className="h-[1px] bg-white/5 my-2" />
+
+          <Link
+            href="/"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all text-gray-500 hover:text-white hover:bg-white/5"
+          >
+            <Globe size={14} className="text-[#00f2ff]" />
+            Main Site / Shop
+          </Link>
         </nav>
 
         {/* Bottom actions */}
@@ -691,12 +705,21 @@ export default function Dashboard() {
             </p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-6">
+            <Link 
+              href="/" 
+              className="px-3.5 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:border-[#00f2ff]/30 text-white hover:text-[#00f2ff] text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
+            >
+              <Globe size={11} className="text-[#00f2ff]" />
+              Main Site
+            </Link>
 
-            <div className={`h-2 w-2 rounded-full ${systemActive ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
-            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-              {systemActive ? l.networkOnline : "Offline Mode"}
-            </span>
+            <div className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full ${systemActive ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                {systemActive ? l.networkOnline : "Offline Mode"}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -919,7 +942,7 @@ export default function Dashboard() {
                   <div className="space-y-4">
                     <div className="p-3 bg-white/5 rounded-xl border border-white/5">
                       <p className="text-[9px] font-black uppercase text-gray-500 tracking-wider mb-1">{l.dbEndpoint}</p>
-                      <p className="text-xs font-mono text-white truncate">{dbUrl || "Not Configured"}</p>
+                      <p className="text-xs font-mono text-white truncate">{dbUrl || (isDemo ? "https://db.appsminers-secure-cloud.co" : "Not Configured")}</p>
                     </div>
 
                     <div className="p-3 bg-white/5 rounded-xl border border-white/5 flex justify-between items-center">
@@ -949,6 +972,8 @@ export default function Dashboard() {
                     <thead>
                       <tr className="border-b border-white/5 text-[9px] uppercase tracking-widest font-black text-gray-500">
                         <th className="pb-3 px-2">Operator Identity</th>
+                        <th className="pb-3 px-2">Contact</th>
+                        <th className="pb-3 px-2">Location</th>
                         <th className="pb-3 px-2">Role</th>
                         <th className="pb-3 px-2 text-center">Status</th>
                         <th className="pb-3 px-2 text-right">Actions</th>
@@ -961,6 +986,12 @@ export default function Dashboard() {
                           <tr key={op.id} className="border-b border-white/5 hover:bg-white/2 transition-colors">
                             <td className="py-4 px-2 font-mono text-white font-medium">
                               {op.username || op.first_name || "Unknown Operator"}
+                            </td>
+                            <td className="py-4 px-2 font-mono text-xs text-gray-400">
+                              {op.phone_number || "—"}
+                            </td>
+                            <td className="py-4 px-2 text-gray-400 font-medium">
+                              {op.country || "—"}
                             </td>
                             <td className="py-4 px-2 font-bold text-gray-500">
                               {op.is_admin ? l.roleAdmin : "Operator"}
@@ -989,7 +1020,7 @@ export default function Dashboard() {
                         );
                       }) : (
                         <tr>
-                          <td colSpan={4} className="py-8 text-center text-gray-500">
+                          <td colSpan={6} className="py-8 text-center text-gray-500">
                             Loading operators...
                           </td>
                         </tr>
