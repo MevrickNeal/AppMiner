@@ -663,7 +663,7 @@ export default function Dashboard() {
             className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all text-gray-500 hover:text-white hover:bg-white/5"
           >
             <Globe size={14} className="text-[#00f2ff]" />
-            Main Site / Shop
+            Home
           </Link>
         </nav>
 
@@ -711,7 +711,7 @@ export default function Dashboard() {
               className="px-3.5 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:border-[#00f2ff]/30 text-white hover:text-[#00f2ff] text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
             >
               <Globe size={11} className="text-[#00f2ff]" />
-              Main Site
+              Home
             </Link>
 
             <div className="flex items-center gap-2">
