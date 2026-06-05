@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Flame, Snowflake, Shield, Lock, Zap, CheckCircle2,
@@ -405,6 +405,46 @@ export default function WalletServices() {
     }, 2000);
   };
 
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [typedKey, setTypedKey] = useState("");
+  const [showInstructions, setShowInstructions] = useState(false);
+
+  // Focus keyboard listener input when modal opens
+  useEffect(() => {
+    if (showUsbModal && usbStep === "idle") {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [showUsbModal, usbStep]);
+
+  const handleInputChange = (val: string) => {
+    setTypedKey(val);
+    if (val.trim().startsWith("AppsMiners-ATTINY85-ColdWallet-KEY-")) {
+      setUsbStep("verifying");
+      const timer = setTimeout(() => {
+        setUsbStep("success");
+        setTypedKey("");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (typedKey.trim().startsWith("AppsMiners-ATTINY85-ColdWallet-KEY-")) {
+      setUsbStep("verifying");
+      const timer = setTimeout(() => {
+        setUsbStep("success");
+        setTypedKey("");
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else {
+      alert("Invalid hardware wallet signature key. Ensure your Digispark ATtiny85 is properly flashed.");
+    }
+  };
+
   return (
     <section className="py-24 bg-[#050505] text-white border-t border-white/5" dir={isRtl ? "rtl" : "ltr"}>
       <div className="max-w-[1400px] mx-auto px-6">
@@ -608,15 +648,83 @@ export default function WalletServices() {
                         USB Security Key Required
                       </h4>
                       <p className="text-xs text-gray-500 leading-relaxed px-4">
-                        Please insert your physical AppsMiners security key (FIDO2 / HSM) into your device's USB port to decrypt the Cold Vault keys.
+                        Insert your physical Digispark ATtiny85 Hardware Wallet to auto-verify, or paste your unique cryptographic key below.
                       </p>
                     </div>
-                    <button
-                      onClick={startUsbVerification}
-                      className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
-                    >
-                      <Key size={14} /> Connect USB Key
-                    </button>
+
+                    {/* Hardware Keystroke Listening Field */}
+                    <form onSubmit={handleFormSubmit} className="space-y-2 px-2">
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={typedKey}
+                        onChange={(e) => handleInputChange(e.target.value)}
+                        placeholder="Waiting for ATtiny85 input..."
+                        className="w-full bg-black/60 border border-white/10 rounded-xl py-3.5 px-4 text-center font-mono text-xs text-[#00f2ff] focus:outline-none focus:border-[#00f2ff]/60 placeholder:text-zinc-700 transition-colors"
+                        autoComplete="off"
+                      />
+                      <p className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">
+                        Keystroke Listener Active
+                      </p>
+                    </form>
+
+                    <div className="flex flex-col gap-3 pt-2">
+                      {/* Manual Simulation Option */}
+                      <button
+                        onClick={() => {
+                          setTypedKey("AppsMiners-ATTINY85-ColdWallet-KEY-7f8a9c2b4d6e");
+                          setUsbStep("verifying");
+                          setTimeout(() => {
+                            setUsbStep("success");
+                            setTypedKey("");
+                          }, 2000);
+                        }}
+                        className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+                      >
+                        <Key size={14} /> Simulate USB Connection
+                      </button>
+
+                      {/* Flashing Code Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setShowInstructions(!showInstructions)}
+                        className="text-[10px] text-[#00f2ff] hover:underline font-bold uppercase tracking-wider"
+                      >
+                        {showInstructions ? "Hide Flashing Instructions" : "How to Code Digispark ATtiny85?"}
+                      </button>
+                    </div>
+
+                    {/* Digispark Flashing Guide */}
+                    <AnimatePresence>
+                      {showInstructions && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="text-left bg-white/5 border border-white/5 rounded-2xl p-4 overflow-y-auto max-h-56 text-[10px] font-mono text-zinc-400 space-y-3 mt-4"
+                        >
+                          <p className="font-bold text-amber-400">⚡ Arduino IDE Sketch Code:</p>
+                          <pre className="bg-black/60 p-3 rounded-lg text-[9px] text-zinc-300 overflow-x-auto whitespace-pre">
+{`#include "DigiKeyboard.h"
+
+const char* key = "AppsMiners-ATTINY85-ColdWallet-KEY-7f8a9c2b4d6e";
+
+void setup() {}
+void loop() {
+  DigiKeyboard.delay(2000);
+  DigiKeyboard.print(key);
+  DigiKeyboard.sendKeyStroke(KEY_ENTER);
+  while(true) {
+    DigiKeyboard.delay(1000);
+  }
+}`}
+                          </pre>
+                          <p className="text-[9px] text-zinc-500 leading-normal">
+                            Flash this sketch to your Digispark board. When connected, it registers as a USB keyboard device and automatically types your decryption key followed by the Enter key.
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )}
 

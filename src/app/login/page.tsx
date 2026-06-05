@@ -16,6 +16,7 @@ export default function Login() {
   const [langOpen, setLangOpen] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isDemo, setIsDemo] = useState(true);
   
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -62,6 +63,15 @@ export default function Login() {
     setLoading(true);
     setErrorMsg("");
     setSuccessMsg("");
+
+    if (isDemo) {
+      localStorage.setItem("appsminers_demo", "true");
+      setSuccessMsg(authMode === "signin" ? "Demo Authentication Successful!" : "Demo Registration Successful!");
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 1000);
+      return;
+    }
 
     try {
       if (authMode === "signin") {
@@ -222,6 +232,22 @@ export default function Login() {
             </p>
           </div>
 
+
+          {/* Demo Mode Switcher Banner */}
+          <div className="mb-6 p-4 rounded-xl border border-dashed text-center transition-all bg-amber-500/10 border-amber-500/30 text-amber-400">
+            <div className="flex flex-col items-center gap-1.5">
+              <span className="text-[10px] font-black uppercase tracking-wider">
+                {isDemo ? "⚠️ Local Demo Sandbox Active" : "🌐 Live Database Connection Active"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsDemo(!isDemo)}
+                className="text-[9px] font-bold underline hover:text-white transition-colors"
+              >
+                {isDemo ? "Switch to Live Supabase Connection" : "Switch to Local Demo Sandbox"}
+              </button>
+            </div>
+          </div>
 
           {/* Tab Mode switch */}
           <div className="flex bg-white/5 border border-white/5 rounded-xl p-1 mb-6 max-w-md mx-auto">

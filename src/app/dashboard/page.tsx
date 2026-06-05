@@ -357,6 +357,29 @@ export default function Dashboard() {
   useEffect(() => {
     async function checkUser() {
       try {
+        const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+        if (isDemoMode) {
+          setUserEmail("operator@appsminers.com");
+          setIsAdmin(true);
+          
+          // Rich mock node and profile data for zero-config local demo mode
+          setAllProfiles([
+            { id: "1", username: "Lian Mollick Nehal", is_admin: true, phone_number: "+8801700000000", country: "Bangladesh" },
+            { id: "2", username: "Alex Mercer", is_admin: false, phone_number: "+14155552671", country: "United States" },
+            { id: "3", username: "Fatima Al-Sudais", is_admin: false, phone_number: "+966501234567", country: "Saudi Arabia" }
+          ]);
+          setAllNodes([
+            { id: "1", name: "Cluster-Alpha-1", status: "online", hashrate: 125.4 },
+            { id: "2", name: "Cluster-Alpha-2", status: "online", hashrate: 110.2 },
+            { id: "3", name: "Cluster-Beta-1", status: "online", hashrate: 95.8 },
+            { id: "4", name: "Cluster-Beta-2", status: "online", hashrate: 84.4 },
+            { id: "5", name: "DeepVault-Node-3", status: "online", hashrate: 62.4 }
+          ]);
+          
+          setLoading(false);
+          return;
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession();
         if (session) {
           setUserEmail(session.user?.email || "operator@appsminers.com");
@@ -395,14 +418,17 @@ export default function Dashboard() {
     let subscription: any = null;
 
     try {
-      const authRes = supabase.auth.onAuthStateChange((_event, session) => {
-        if (!session) {
-          router.push("/login");
-        } else {
-          setUserEmail(session.user?.email || "operator@appsminers.com");
-        }
-      });
-      subscription = authRes.data?.subscription;
+      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+      if (!isDemoMode) {
+        const authRes = supabase.auth.onAuthStateChange((_event, session) => {
+          if (!session) {
+            router.push("/login");
+          } else {
+            setUserEmail(session.user?.email || "operator@appsminers.com");
+          }
+        });
+        subscription = authRes.data?.subscription;
+      }
     } catch (err) {
       console.warn("Supabase auth state listener failed", err);
     }
@@ -416,6 +442,7 @@ export default function Dashboard() {
 
   const handleSignOut = async () => {
     try {
+      localStorage.removeItem("appsminers_demo");
       await supabase.auth.signOut();
     } catch (e) {}
     router.push("/");
