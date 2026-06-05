@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Flame, Snowflake, Shield, Lock, Zap, CheckCircle2,
-  ArrowRight, Eye, EyeOff
+  ArrowRight, Eye, EyeOff, Usb, Key, X, Loader2, HardDrive
 } from "lucide-react";
 import { useTranslation } from "@/context/LanguageContext";
 
@@ -369,18 +369,41 @@ export default function WalletServices() {
   const [activeWallet, setActiveWallet] = useState<"hot" | "cold">("hot");
   const [showBalance, setShowBalance] = useState(true);
 
+  // USB simulation state
+  const [showUsbModal, setShowUsbModal] = useState(false);
+  const [usbStep, setUsbStep] = useState<"idle" | "verifying" | "success" | "error">("idle");
+  const [vaultUnlocked, setVaultUnlocked] = useState(false);
+
   // Dynamic values
   const activeIcon = activeWallet === "hot" ? Flame : Snowflake;
   const activeAccentColor = activeWallet === "hot" ? "#f97316" : "#00f2ff";
   const activeGlowColor = activeWallet === "hot" ? "rgba(249,115,22,0.15)" : "rgba(0,242,255,0.12)";
   const activeLabel = activeWallet === "hot" ? labels.hotWalletLabel : labels.coldStorageLabel;
-  const activeSubtitle = activeWallet === "hot" ? labels.hotSubtitle : labels.coldSubtitle;
+  
+  const activeSubtitle = activeWallet === "hot" 
+    ? labels.hotSubtitle 
+    : (vaultUnlocked ? "❄️ Unlocked via Hardware Key" : "🔒 USB Verification Required");
+    
   const activeDesc = activeWallet === "hot" ? labels.hotDesc : labels.coldDesc;
-  const activeBalance = activeWallet === "hot" ? "4.2831 BTC" : "38.9210 BTC";
-  const activeUsd = activeWallet === "hot" ? "$274,139" : "$2,491,944";
+  
+  const activeBalance = activeWallet === "hot" 
+    ? "4.2831 BTC" 
+    : (vaultUnlocked ? "38.9210 BTC" : "••.•••• BTC");
+    
+  const activeUsd = activeWallet === "hot" 
+    ? "$274,139" 
+    : (vaultUnlocked ? "$2,491,944" : "$•,•••,•••");
+    
   const activeStats = activeWallet === "hot" ? labels.hotStats : labels.coldStats;
   const activeFeatures = activeWallet === "hot" ? labels.hotFeatures : labels.coldFeatures;
-  const activeCta = activeWallet === "hot" ? labels.hotCta : labels.coldCta;
+  const activeCta = activeWallet === "hot" ? labels.hotCta : (vaultUnlocked ? "Manage Cold Vault" : "Unlock with USB Key");
+
+  const startUsbVerification = () => {
+    setUsbStep("verifying");
+    setTimeout(() => {
+      setUsbStep("success");
+    }, 2000);
+  };
 
   return (
     <section className="py-24 bg-[#050505] text-white border-t border-white/5" dir={isRtl ? "rtl" : "ltr"}>
@@ -472,6 +495,18 @@ export default function WalletServices() {
                 </div>
 
                 <button
+                  onClick={() => {
+                    if (activeWallet === "cold") {
+                      if (!vaultUnlocked) {
+                        setShowUsbModal(true);
+                        setUsbStep("idle");
+                      } else {
+                        alert("Cold Vault accessed. Deep storage configurations authorized.");
+                      }
+                    } else {
+                      alert("Hot wallet accessed. Daily transactions are operational.");
+                    }
+                  }}
                   className="w-full py-3.5 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
                   style={{ backgroundColor: activeAccentColor, color: "#000" }}
                 >
@@ -544,6 +579,100 @@ export default function WalletServices() {
             </div>
           </div>
         </div>
+
+        {/* USB Security Key Verification Modal */}
+        <AnimatePresence>
+          {showUsbModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-md bg-[#070707] border border-white/10 rounded-3xl p-8 overflow-hidden text-center"
+              >
+                {/* Close Button */}
+                <button
+                  onClick={() => setShowUsbModal(false)}
+                  className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
+                >
+                  <X size={18} />
+                </button>
+
+                {usbStep === "idle" && (
+                  <div className="space-y-6">
+                    <div className="mx-auto w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 animate-pulse">
+                      <Usb size={32} />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-black uppercase tracking-tight text-white mb-2">
+                        USB Security Key Required
+                      </h4>
+                      <p className="text-xs text-gray-500 leading-relaxed px-4">
+                        Please insert your physical AppsMiners security key (FIDO2 / HSM) into your device's USB port to decrypt the Cold Vault keys.
+                      </p>
+                    </div>
+                    <button
+                      onClick={startUsbVerification}
+                      className="w-full py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+                    >
+                      <Key size={14} /> Connect USB Key
+                    </button>
+                  </div>
+                )}
+
+                {usbStep === "verifying" && (
+                  <div className="space-y-6 py-4">
+                    <div className="mx-auto w-16 h-16 rounded-full bg-[#00f2ff]/10 flex items-center justify-center text-[#00f2ff]">
+                      <Loader2 size={32} className="animate-spin" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-black uppercase tracking-tight text-[#00f2ff] mb-2">
+                        Verifying Hardware...
+                      </h4>
+                      <p className="text-xs text-gray-500 leading-relaxed px-4">
+                        Reading challenge-response token signatures from the hardware module. Do not disconnect the USB key.
+                      </p>
+                    </div>
+                    {/* Simulated Loading Bar */}
+                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: "100%" }}
+                        transition={{ duration: 2, ease: "easeInOut" }}
+                        className="h-full bg-[#00f2ff]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {usbStep === "success" && (
+                  <div className="space-y-6">
+                    <div className="mx-auto w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                      <CheckCircle2 size={32} />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-black uppercase tracking-tight text-emerald-400 mb-2">
+                        Keys Verified Successfully
+                      </h4>
+                      <p className="text-xs text-gray-500 leading-relaxed px-4">
+                        FIDO2 handshake successful. Air-gapped AES-256 decryption parameters loaded. Vault is now unlocked.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setVaultUnlocked(true);
+                        setShowUsbModal(false);
+                      }}
+                      className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+                    >
+                      Access Cold Vault <ArrowRight size={14} />
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
       </div>
     </section>
