@@ -67,34 +67,34 @@ export const CATALOG_I18N: Record<string, any> = {
     },
     products: {
       t200: {
-        name: "appsminers T200 Pro",
+        name: "AppsMiners T200 Pro",
         series: "Pro Series // Flagship",
         badge: "Best Seller",
         description: "Our ultimate flagship — 200 TH/s of raw SHA-256 mining power with enterprise-grade thermal management. Built for 24/7 data-center deployment."
       },
       f100: {
-        name: "appsminers F100 Pro",
+        name: "AppsMiners F100 Pro",
         series: "Pro Series // Flagship",
         description: "The ideal mid-range powerhouse. 100 TH/s in a compact chassis — perfect for serious home rigs and small farm setups."
       },
       f50: {
-        name: "appsminers F50 Pro",
+        name: "AppsMiners F50 Pro",
         series: "Pro Series // Flagship",
         badge: "Entry Pro",
         description: "Professional-grade mining in a budget-conscious package. 50 TH/s with whisper-quiet single fan — the gateway to the Pro Series."
       },
       mini: {
-        name: "appsminers Mini",
+        name: "AppsMiners Mini",
         series: "Micro Series // Compact",
         description: "Compact desktop miner with whisper-quiet operation. Plug into any wall socket and start earning — no specialist knowledge required."
       },
       nano: {
-        name: "appsminers Nano",
+        name: "AppsMiners Nano",
         series: "Micro Series // USB",
         description: "The ultimate USB stick miner. Fully bus-powered — just plug into any USB 3.0 port and you're mining. No setup. No fuss."
       },
       pocket: {
-        name: "appsminers Pocket",
+        name: "AppsMiners Pocket",
         series: "Micro Series // Portable",
         badge: "World's Smallest",
         description: "The world's smallest standalone blockchain mining device. USB-C powered, fully portable, and configurable from any smartphone."
@@ -175,34 +175,34 @@ export const CATALOG_I18N: Record<string, any> = {
     },
     products: {
       t200: {
-        name: "appsminers T200 Pro",
+        name: "AppsMiners T200 Pro",
         series: "Pro Series // رائدة",
         badge: "الأكثر مبيعاً",
         description: "جهازنا الرائد المطلق — 200 TH/s من قوة تعدين SHA-256 مع إدارة حرارية متطورة. مصمم للعمل المستمر 24/7 في مراكز البيانات."
       },
       f100: {
-        name: "appsminers F100 Pro",
+        name: "AppsMiners F100 Pro",
         series: "Pro Series // رائدة",
         description: "الجهاز المتوسط المثالي. 100 TH/s في هيكل مدمج — ممتاز للتعدين المنزلي الجاد والمزارع الصغيرة."
       },
       f50: {
-        name: "appsminers F50 Pro",
+        name: "AppsMiners F50 Pro",
         series: "Pro Series // رائدة",
         badge: "بداية الفئة الاحترافية",
         description: "تعدين بمستوى احترافي بسعر اقتصادي. 50 TH/s مع مروحة صامتة مفردة — بوابتك إلى الفئة الاحترافية."
       },
       mini: {
-        name: "appsminers Mini",
+        name: "AppsMiners Mini",
         series: "سلسلة Micro // مدمج",
         description: "جهاز تعدين مكتبي مدمج بتشغيل صامت جداً. فقط قم بتوصيله بأي مقبس حائط وابدأ التعدين دون أي خبرة مسبقة."
       },
       nano: {
-        name: "appsminers Nano",
+        name: "AppsMiners Nano",
         series: "سلسلة Micro // USB",
         description: "معدن الـ USBStick المتكامل. يعمل مباشرة عبر منفذ USB — صله بمنفذ USB 3.0 وابدأ التعدين فوراً وبدون تعقيد."
       },
       pocket: {
-        name: "appsminers Pocket",
+        name: "AppsMiners Pocket",
         series: "سلسلة Micro // محمول",
         badge: "الأصغر في العالم",
         description: "أصغر جهاز تعدين بلوكشين مستقل في العالم. يعمل بـ USB-C، محمول بالكامل ويمكن تهيئته عبر هاتفك الذكي."
@@ -283,34 +283,34 @@ export const CATALOG_I18N: Record<string, any> = {
     },
     products: {
       t200: {
-        name: "appsminers T200 Pro",
+        name: "AppsMiners T200 Pro",
         series: "प्रो सीरीज // फ्लैगशिप",
         badge: "सबसे लोकप्रिय",
         description: "हमारा परम फ्लैगशिप — एंटरप्राइज-ग्रेड थर्मल प्रबंधन के साथ 200 TH/s की कच्ची SHA-256 माइनिंग शक्ति। डेटा-सेंटर में 24/7 तैनाती के लिए निर्मित।"
       },
       f100: {
-        name: "appsminers F100 Pro",
+        name: "AppsMiners F100 Pro",
         series: "प्रो सीरीज // फ्लैगशिप",
         description: "आदर्श मिड-रेंज पावरहाउस। एक कॉम्पैक्ट चेसिस में 100 TH/s — गंभीर होम रिग्स और छोटे माइनिंग फार्मों के लिए बिल्कुल सही।"
       },
       f50: {
-        name: "appsminers F50 Pro",
+        name: "AppsMiners F50 Pro",
         series: "प्रो सीरीज // फ्लैगशिप",
         badge: "एंट्री प्रो",
         description: "बजट-अनुकूल पैकेज में पेशेवर-ग्रेड माइनिंग। शांत सिंगल फैन के साथ 50 TH/s — प्रो सीरीज का प्रवेश द्वार।"
       },
       mini: {
-        name: "appsminers Mini",
+        name: "AppsMiners Mini",
         series: "माइक्रो सीरीज // कॉम्पैक्ट",
         description: "शांत संचालन के साथ कॉम्पैक्ट डेस्कटॉप माइनर। किसी भी दीवार सॉकेट में प्लग करें और कमाना शुरू करें — किसी विशेषज्ञ ज्ञान की आवश्यकता नहीं है।"
       },
       nano: {
-        name: "appsminers Nano",
+        name: "AppsMiners Nano",
         series: "माइक्रो सीरीज // USB",
         description: "परम यूएसबी स्टिक माइनर। पूरी तरह से बस-संचालित — बस किसी भी यूएसबी 3.0 पोर्ट में प्लग करें और आपकी माइनिंग शुरू। कोई सेटअप नहीं।"
       },
       pocket: {
-        name: "appsminers Pocket",
+        name: "AppsMiners Pocket",
         series: "माइक्रो सीरीज // पोर्टेबल",
         badge: "दुनिया का सबसे छोटा",
         description: "दुनिया का सबसे छोटा स्टैंडअलोन ब्लॉकचेन माइनिंग डिवाइस। यूएसबी-सी संचालित, पूरी तरह से पोर्टेबल और स्मार्टफोन से कॉन्फ़िगर करने योग्य।"
@@ -391,34 +391,34 @@ export const CATALOG_I18N: Record<string, any> = {
     },
     products: {
       t200: {
-        name: "appsminers T200 Pro",
+        name: "AppsMiners T200 Pro",
         series: "Pro-Serie // Flaggschiff",
         badge: "Bestseller",
         description: "Unser ultimatives Flaggschiff — 200 TH/s rohe SHA-256-Rechenleistung mit optimiertem Thermomanagement. Entwickelt für den 24/7-Dauerbetrieb im Rechenzentrum."
       },
       f100: {
-        name: "appsminers F100 Pro",
+        name: "AppsMiners F100 Pro",
         series: "Pro-Serie // Flaggschiff",
         description: "Das ideale Kraftpaket der Mittelklasse. 100 TH/s in einem kompakten Gehäuse — perfekt für anspruchsvolle Heim-Mining-Setups."
       },
       f50: {
-        name: "appsminers F50 Pro",
+        name: "AppsMiners F50 Pro",
         series: "Pro-Serie // Flaggschiff",
         badge: "Einstiegs-Pro",
         description: "Professionelles Mining im budgetschonenden Format. 50 TH/s mit leisem Einzellüfter — der ideale Einstieg in die Pro-Serie."
       },
       mini: {
-        name: "appsminers Mini",
+        name: "AppsMiners Mini",
         series: "Micro-Serie // Kompakt",
         description: "Kompakter Desktop-Miner mit extrem leisem Betrieb. Einfach an die Steckdose anschließen und verdienen — keine Vorkenntnisse nötig."
       },
       nano: {
-        name: "appsminers Nano",
+        name: "AppsMiners Nano",
         series: "Micro-Serie // USB",
         description: "Der ultimative USB-Stick-Miner. Vollständig über den USB-Bus betrieben — einfach in einen USB-3.0-Port stecken und loslegen. Kein Setup."
       },
       pocket: {
-        name: "appsminers Pocket",
+        name: "AppsMiners Pocket",
         series: "Micro-Serie // Tragbar",
         badge: "Weltweit Kleinster",
         description: "Das kleinste eigenständige Krypto-Mining-Gerät der Welt. Über USB-C betrieben, voll portabel und über das Smartphone steuerbar."
@@ -499,34 +499,34 @@ export const CATALOG_I18N: Record<string, any> = {
     },
     products: {
       t200: {
-        name: "appsminers T200 Pro",
+        name: "AppsMiners T200 Pro",
         series: "Série Pro // Flagship",
         badge: "Meilleure Vente",
         description: "Notre fleuron ultime — 200 TH/s de puissance de calcul brute SHA-256 avec gestion thermique industrielle. Conçu pour un déploiement 24/7 en centre de données."
       },
       f100: {
-        name: "appsminers F100 Pro",
+        name: "AppsMiners F100 Pro",
         series: "Série Pro // Flagship",
         description: "Le compromis idéal de puissance. 100 TH/s dans un châssis compact — parfait pour les rigs domestiques sérieux et les petites fermes."
       },
       f50: {
-        name: "appsminers F50 Pro",
+        name: "AppsMiners F50 Pro",
         series: "Série Pro // Flagship",
         badge: "Entrée Gamme Pro",
         description: "Le minage de qualité professionnelle adapté aux budgets serrés. 50 TH/s avec ventilateur unique ultra-discret — votre porte d'entrée dans la série Pro."
       },
       mini: {
-        name: "appsminers Mini",
+        name: "AppsMiners Mini",
         series: "Série Micro // Compact",
         description: "Un mineur de bureau compact au fonctionnement silencieux. Branchez-le sur une simple prise murale et commencez à récolter — sans aucune expertise requise."
       },
       nano: {
-        name: "appsminers Nano",
+        name: "AppsMiners Nano",
         series: "Série Micro // USB",
         description: "Le mineur clé USB ultime. Entièrement alimenté par le port USB — branchez-le sur un port USB 3.0 et vous minez déjà. Zéro config."
       },
       pocket: {
-        name: "appsminers Pocket",
+        name: "AppsMiners Pocket",
         series: "Série Micro // Portable",
         badge: "Plus Petit du Monde",
         description: "Le plus petit appareil de minage autonome au monde. Alimenté par USB-C, totalement mobile et paramétrable depuis un simple smartphone."
@@ -607,34 +607,34 @@ export const CATALOG_I18N: Record<string, any> = {
     },
     products: {
       t200: {
-        name: "appsminers T200 Pro",
+        name: "AppsMiners T200 Pro",
         series: "Serie Pro // Flagship",
         badge: "Más Vendido",
         description: "Nuestro buque insignia — 200 TH/s de potencia de hash SHA-256 bruta con gestión térmica de nivel empresarial. Diseñado para centros de datos 24/7."
       },
       f100: {
-        name: "appsminers F100 Pro",
+        name: "AppsMiners F100 Pro",
         series: "Serie Pro // Flagship",
         description: "La potencia de gama media ideal. 100 TH/s en un chasis compacto — perfecto para mineros caseros y granjas pequeñas."
       },
       f50: {
-        name: "appsminers F50 Pro",
+        name: "AppsMiners F50 Pro",
         series: "Serie Pro // Flagship",
         badge: "Entrada Pro",
         description: "Minería de nivel profesional en un paquete económico. 50 TH/s con ventilador silencioso — la puerta de entrada a la Serie Pro."
       },
       mini: {
-        name: "appsminers Mini",
+        name: "AppsMiners Mini",
         series: "Serie Micro // Compacto",
         description: "Minero de escritorio compacto de funcionamiento silencioso. Conéctelo a cualquier enchufe y comience a minar — sin conocimientos técnicos."
       },
       nano: {
-        name: "appsminers Nano",
+        name: "AppsMiners Nano",
         series: "Serie Micro // USB",
         description: "El minero en llave USB definitivo. Alimentado por bus — conéctelo a cualquier puerto USB 3.0 y estará minando de inmediato sin configuraciones."
       },
       pocket: {
-        name: "appsminers Pocket",
+        name: "AppsMiners Pocket",
         series: "Serie Micro // Portátil",
         badge: "Más Pequeño del Mundo",
         description: "El dispositivo de minería independiente más pequeño del mundo. Alimentado por USB-C, portátil y configurable desde su móvil."
@@ -715,34 +715,34 @@ export const CATALOG_I18N: Record<string, any> = {
     },
     products: {
       t200: {
-        name: "appsminers T200 Pro",
+        name: "AppsMiners T200 Pro",
         series: "প্রো সিরিজ // ফ্ল্যাগশিপ",
         badge: "সেরা পছন্দ",
         description: "আমাদের সেরা ফ্ল্যাগশিপ — এন্টারপ্রাইজ-গ্রেড থার্মাল ম্যানেজমেন্ট সহ ২০০ TH/s এর নিখাদ SHA-256 মাইনিং ক্ষমতা। ২৪/৭ ডেটা-সেন্টারে কাজ করার জন্য তৈরি।"
       },
       f100: {
-        name: "appsminers F100 Pro",
+        name: "AppsMiners F100 Pro",
         series: "প্রো সিরিজ // ফ্ল্যাগশিপ",
         description: "মাঝারি ফিক্সড বাজেটের সেরা মাইনার। ছোট বডিতে ১০০ TH/s শক্তি — বাসা বা খামারে মাইনিংয়ের জন্য আদর্শ।"
       },
       f50: {
-        name: "appsminers F50 Pro",
+        name: "AppsMiners F50 Pro",
         series: "প্রো সিরিজ // ফ্ল্যাগশিপ",
         badge: "এন্ট্রি প্রো",
         description: "স্বল্প বাজেটে পেশাদার মানের মাইনিং সুবিধা। একটিমাত্র শব্দহীন ফ্যানের সাহায্যে ৫০ TH/s ক্ষমতা — প্রো সিরিজের প্রবেশদ্বার।"
       },
       mini: {
-        name: "appsminers Mini",
+        name: "AppsMiners Mini",
         series: "মাইক্রো সিরিজ // কমপ্যাক্ট",
         description: "শব্দহীনভাবে ঘরে ব্যবহারের কমপ্যাক্ট ডেস্কটপ মাইনার। বাড়ির যেকোনো প্লাগে যুক্ত করুন এবং আয় শুরু করুন — কোনো টেকনিক্যাল জ্ঞানের প্রয়োজন নেই।"
       },
       nano: {
-        name: "appsminers Nano",
+        name: "AppsMiners Nano",
         series: "মাইক্রো সিরিজ // ইউএসবি",
         description: "সবচেয়ে ছোট ইউএসবি স্টিক মাইনার। কোনো জটিল সেটিংস নেই — শুধু যেকোনো ইউএসবি ৩.০ পোর্টে যুক্ত করুন এবং মাইনিং শুরু করুন।"
       },
       pocket: {
-        name: "appsminers Pocket",
+        name: "AppsMiners Pocket",
         series: "মাইক্রো সিরিজ // পোর্টেবল",
         badge: "বিশ্বের ক্ষুদ্রতম",
         description: "বিশ্বের সবচেয়ে ছোট স্ট্যান্ডঅلوন ব্লকচেইন মাইনিং ডিভাইস। ইউএসবি-সি চালিত, সম্পূর্ণ পোর্টেবল এবং মোবাইল দিয়েই কনফিগারযোগ্য।"

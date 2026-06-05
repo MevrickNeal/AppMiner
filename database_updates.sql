@@ -1,4 +1,4 @@
--- AppMiner Database Updates: Wallets & Pre-orders
+-- AppsMiners Database Updates: Wallets & Pre-orders
 -- Run this script in the Supabase SQL Editor
 
 -- 1. Add `is_preorder` column to `public.purchases`

@@ -1,4 +1,4 @@
--- AppMiner Database Schema
+-- AppsMiners Database Schema
 -- Run this script in the Supabase SQL Editor
 
 -- 1. Create Profiles Table (extends auth.users)

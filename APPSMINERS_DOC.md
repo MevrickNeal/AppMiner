@@ -2,14 +2,14 @@
 
 ## Warm Greetings & Well Wishes
 
-> "To the next generation of engineers shaping the future of this ecosystem: Welcome to appsminers. May your builds be clean, your queries fast, and your mining pools always filled. This project has been designed with robust security, fluid aesthetics, and modern web paradigms at its core. Take it, improve it, and build the next frontier."
+> "To the next generation of engineers shaping the future of this ecosystem: Welcome to AppsMiners. May your builds be clean, your queries fast, and your mining pools always filled. This project has been designed with robust security, fluid aesthetics, and modern web paradigms at its core. Take it, improve it, and build the next frontier."
 > 
 > — **Lian Mollick Nehal**
 
 ---
 
 ## 1. Project Overview & Identity
-**appsminers** is an enterprise-grade ASIC hardware distribution, mining cluster management, and user wallet ecosystem. It bridges physical hardware management with real-time web telemetry and secure crypto financial services.
+**AppsMiners** is an enterprise-grade ASIC hardware distribution, mining cluster management, and user wallet ecosystem. It bridges physical hardware management with real-time web telemetry and secure crypto financial services.
 
 ### Core Stack
 - **Framework**: Next.js 14+ (App Router)
@@ -22,7 +22,7 @@
 ---
 
 ## 2. Environment Variables & Secret Management
-To run or modify appsminers, you require a `.env.local` file at the root.
+To run or modify AppsMiners, you require a `.env.local` file at the root.
 
 ```bash
 # Supabase Project Connection Details

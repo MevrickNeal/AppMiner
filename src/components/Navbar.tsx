@@ -49,13 +49,13 @@ export default function Navbar() {
               <div className="relative w-9 h-9 flex-shrink-0">
                 <Image
                   src="/Products/icon blue.png"
-                  alt="appsminers icon"
+                  alt="AppsMiners icon"
                   fill
                   className="object-contain"
                 />
               </div>
               <span className="text-xl font-black tracking-tighter text-black group-hover:text-gray-700 transition-colors">
-                appsminers
+                AppsMiners
               </span>
             </Link>
           </div>
@@ -154,12 +154,12 @@ export default function Navbar() {
               <div className="relative w-8 h-8 flex-shrink-0">
                 <Image
                   src="/Products/icon blue.png"
-                  alt="appsminers icon"
+                  alt="AppsMiners icon"
                   fill
                   className="object-contain"
                 />
               </div>
-              <span className="text-base font-black tracking-tighter text-black">appsminers</span>
+              <span className="text-base font-black tracking-tighter text-black">AppsMiners</span>
             </div>
 
             {navLinks.map((link) => (

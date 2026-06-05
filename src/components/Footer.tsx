@@ -13,7 +13,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "Products",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "AppsMiners Mini", "AppsMiners Nano", "AppsMiners Pocket"],
       },
       {
         title: "Services",
@@ -34,7 +34,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "المنتجات",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "AppsMiners Mini", "AppsMiners Nano", "AppsMiners Pocket"],
       },
       {
         title: "الخدمات",
@@ -55,7 +55,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "उत्पाद",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "AppsMiners Mini", "AppsMiners Nano", "AppsMiners Pocket"],
       },
       {
         title: "सेवाएं",
@@ -76,7 +76,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "Produkte",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "AppsMiners Mini", "AppsMiners Nano", "AppsMiners Pocket"],
       },
       {
         title: "Services",
@@ -97,7 +97,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "Produits",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "AppsMiners Mini", "AppsMiners Nano", "AppsMiners Pocket"],
       },
       {
         title: "Services",
@@ -118,7 +118,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "Productos",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "AppsMiners Mini", "AppsMiners Nano", "AppsMiners Pocket"],
       },
       {
         title: "Servicios",
@@ -139,7 +139,7 @@ const FOOTER_I18N: Record<string, any> = {
     navCols: [
       {
         title: "পণ্যসমূহ",
-        links: ["T200 Pro", "F100 Pro", "F50 Pro", "appsminers Mini", "appsminers Nano", "appsminers Pocket"],
+        links: ["T200 Pro", "F100 Pro", "F50 Pro", "AppsMiners Mini", "AppsMiners Nano", "AppsMiners Pocket"],
       },
       {
         title: "সেবাসমূহ",
@@ -312,12 +312,12 @@ export default function Footer() {
               <div className="relative w-10 h-10 bg-white rounded-xl overflow-hidden flex-shrink-0">
                 <Image
                   src="/Products/icon blue.png"
-                  alt="appsminers icon"
+                  alt="AppsMiners icon"
                   fill
                   className="object-contain p-1"
                 />
               </div>
-              <span className="text-lg font-black tracking-tighter text-white">appsminers</span>
+              <span className="text-lg font-black tracking-tighter text-white">AppsMiners</span>
             </Link>
             <p className="text-gray-600 text-sm leading-relaxed mb-8">
               {labels.desc}
@@ -368,13 +368,13 @@ export default function Footer() {
             <div className="relative w-9 h-9 flex-shrink-0">
               <Image
                 src="/Products/icon blue.png"
-                alt="appsminers"
+                alt="AppsMiners"
                 fill
                 className="object-contain"
               />
             </div>
             <span className="text-gray-600 text-xs font-medium">
-              © {new Date().getFullYear()} appsminers. {t("footerAllRightsReserved")}
+              © {new Date().getFullYear()} AppsMiners. {t("footerAllRightsReserved")}
             </span>
           </div>
 

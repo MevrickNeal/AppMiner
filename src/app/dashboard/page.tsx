@@ -465,7 +465,7 @@ export default function Dashboard() {
           <div className="relative w-16 h-16 animate-pulse">
             <Image
               src="/Products/icon blue.png"
-              alt="appsminers Logo"
+              alt="AppsMiners Logo"
               fill
               className="object-contain"
             />
@@ -494,13 +494,13 @@ export default function Dashboard() {
           <div className="relative w-9 h-9">
             <Image
               src="/Products/icon blue.png"
-              alt="appsminers"
+              alt="AppsMiners"
               fill
               className="object-contain"
             />
           </div>
           <div>
-            <span className="text-lg font-black tracking-tighter text-white block leading-none">appsminers</span>
+            <span className="text-lg font-black tracking-tighter text-white block leading-none">AppsMiners</span>
             <span className="text-[9px] font-bold text-[#00f2ff] tracking-widest uppercase">{t("dashSecuredTerminal")}</span>
           </div>
         </div>

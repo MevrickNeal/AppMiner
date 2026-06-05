@@ -208,7 +208,7 @@ export default function Login() {
               <div className="relative w-14 h-14">
                 <Image
                   src="/Products/icon blue.png"
-                  alt="appsminers"
+                  alt="AppsMiners"
                   fill
                   className="object-contain"
                 />

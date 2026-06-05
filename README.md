@@ -1,13 +1,13 @@
-# appsminers ⚡
+# AppsMiners ⚡
 
 [![Next.js](https://img.shields.io/badge/Next.js-14+-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Auth-emerald?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38bdf8?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 
-> "To the next generation of engineers shaping the future of this ecosystem: Welcome to appsminers. May your builds be clean, your queries fast, and your mining pools always filled. Take this codebase, improve it, and build the next frontier." — **Lian Mollick Nehal**
+> "To the next generation of engineers shaping the future of this ecosystem: Welcome to AppsMiners. May your builds be clean, your queries fast, and your mining pools always filled. Take this codebase, improve it, and build the next frontier." — **Lian Mollick Nehal**
 
-appsminers is a modern, enterprise-grade web application for ASIC hardware distribution, real-time mining telemetry, and secure cryptographic storage management. Equipped with clean UI/UX, animations, multi-locale translation routing, and rigid database-level security protocols.
+AppsMiners is a modern, enterprise-grade web application for ASIC hardware distribution, real-time mining telemetry, and secure cryptographic storage management. Equipped with clean UI/UX, animations, multi-locale translation routing, and rigid database-level security protocols.
 
 ---
 
@@ -86,7 +86,7 @@ Copy and execute the migrations inside [database_updates.sql](./database_updates
 
 ## 🔒 Enterprise Security Measures
 
-appsminers is built with enterprise security controls:
+AppsMiners is built with enterprise security controls:
 1. **Row-Level Security (RLS)** restricts data querying strictly to owners (`auth.uid() = user_id`).
 2. **Next.js Security Headers** inside `next.config.ts` configure `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and secure transport standards.
 3. **Query Parameterization** is handled natively by the Supabase Client SDK, blocking NoSQL/SQL injection vectors.
