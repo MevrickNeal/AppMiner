@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { useTranslation } from "@/context/LanguageContext";
 
 export default function HeroIntro() {
@@ -43,6 +44,22 @@ export default function HeroIntro() {
       />
 
       <div className="relative max-w-[1400px] mx-auto px-6 text-center z-10">
+        {/* Transparent Loader GIF */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="relative w-36 h-36 mx-auto mb-2"
+        >
+          <Image
+            src="/Products/loading.gif"
+            alt="AppsMiners animation"
+            fill
+            className="object-contain"
+            unoptimized
+          />
+        </motion.div>
+
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
