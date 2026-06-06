@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -1101,6 +1101,33 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
   const [billingEmail, setBillingEmail] = useState("");
   const [processing, setProcessing] = useState(false);
   const [step, setStep] = useState(0);
+  const [currentBalance, setCurrentBalance] = useState(100.00);
+
+  useEffect(() => {
+    async function loadBalance() {
+      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+      let balance = 100.00;
+      const localBal = localStorage.getItem("appsminers_usd_balance");
+      if (localBal !== null) {
+        balance = parseFloat(localBal);
+      }
+      if (!isDemoMode) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data: wallet } = await supabase
+            .from("wallets")
+            .select("usd_balance")
+            .eq("user_id", session.user.id)
+            .single();
+          if (wallet && wallet.usd_balance !== null) {
+            balance = parseFloat(String(wallet.usd_balance));
+          }
+        }
+      }
+      setCurrentBalance(balance);
+    }
+    loadBalance();
+  }, []);
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1324,6 +1351,10 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
               <span>{cl.sandboxAlertTitle}</span>
             </div>
             <span>{cl.sandboxAlertDesc}</span>
+            <div className="mt-2 pt-2 border-t border-amber-500/20 flex justify-between items-center text-xs">
+              <span className="font-black text-gray-400">Available Account Credit:</span>
+              <span className="font-black text-white bg-amber-500/20 px-2 py-0.5 rounded">${currentBalance.toFixed(2)} USD</span>
+            </div>
           </div>
 
           {/* Hosting Center Location */}
@@ -1414,7 +1445,7 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
             </div>
             <div className="flex justify-between font-black text-white pt-2 border-t border-white/5">
               <span>TOTAL DUE</span>
-              <span className="text-[#00f2ff]">{cl.sandboxFree}</span>
+              <span className="text-[#00f2ff]">{product.price} USD (Deducted from Account Credit)</span>
             </div>
           </div>
 

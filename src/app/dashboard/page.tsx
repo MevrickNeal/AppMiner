@@ -9,14 +9,16 @@ import {
   LayoutDashboard, Wallet, Cpu, LogOut, Shield, 
   Settings, Bell, ChevronRight, User, Terminal,
   ShieldAlert, UserX, Activity, Database, AlertTriangle, Play, Square,
-  ShoppingBag, LifeBuoy, Globe
+  ShoppingBag, LifeBuoy, Globe, Package
 } from "lucide-react";
 import MiningDashboard from "@/components/MiningDashboard";
 import WalletServices from "@/components/WalletServices";
 import OrderHistoryView from "@/components/dashboard/OrderHistoryView";
 import SupportView from "@/components/dashboard/SupportView";
+import ShopView from "@/components/dashboard/ShopView";
 import { useTranslation } from "@/context/LanguageContext";
 import { supabase } from "@/lib/supabase";
+
 
 const DASH_LOCAL_I18N: Record<string, Record<string, string>> = {
   EN: {
@@ -320,7 +322,7 @@ const DASH_LOCAL_I18N: Record<string, Record<string, string>> = {
 export default function Dashboard() {
   const router = useRouter();
   const { language, t, isRtl } = useTranslation();
-  const [activeTab, setActiveTab] = useState<"overview" | "mining" | "wallet" | "settings" | "admin" | "purchases" | "support">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "mining" | "wallet" | "settings" | "admin" | "purchases" | "support" | "shop">("overview");
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState("");
   
@@ -349,7 +351,8 @@ export default function Dashboard() {
     { id: "overview", label: t("navOverview"), icon: LayoutDashboard },
     { id: "mining", label: "Mining", icon: Cpu },
     { id: "wallet", label: "Wallet", icon: Wallet },
-    { id: "purchases", label: "Orders", icon: ShoppingBag },
+    { id: "shop", label: "Shop", icon: ShoppingBag },
+    { id: "purchases", label: "Orders", icon: Package },
     { id: "support", label: "Support", icon: LifeBuoy },
   ];
 
@@ -366,6 +369,7 @@ export default function Dashboard() {
   // User Balance and Nodes simulation states
   const [usdBalance, setUsdBalance] = useState(100.00);
   const [nodesList, setNodesList] = useState<any[]>([]);
+  const [ownedUpgrades, setOwnedUpgrades] = useState<string[]>([]);
 
   const code = language.code;
   const l = DASH_LOCAL_I18N[code] || DASH_LOCAL_I18N.EN;
@@ -379,11 +383,41 @@ export default function Dashboard() {
     setMounted(true);
   }, []);
 
+  const reloadUpgrades = async () => {
+    try {
+      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+      let upgrades: string[] = [];
+      if (isDemoMode) {
+        const localPurchasesStr = localStorage.getItem("appsminers_purchased_history");
+        if (localPurchasesStr) {
+          const list = JSON.parse(localPurchasesStr);
+          upgrades = list.map((p: any) => p.product_id);
+        }
+      } else {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data } = await supabase
+            .from("purchases")
+            .select("product_id")
+            .eq("user_id", session.user.id);
+          if (data) {
+            upgrades = data.map((p: any) => p.product_id);
+          }
+        }
+      }
+      setOwnedUpgrades(upgrades);
+    } catch (err) {
+      console.warn("Failed to load upgrades:", err);
+    }
+  };
+
   useEffect(() => {
     async function checkUser() {
       try {
         const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
         setIsDemo(isDemoMode);
+        
+        await reloadUpgrades();
 
         // Initialize USD balance
         let balance = 100.00;
@@ -547,10 +581,21 @@ export default function Dashboard() {
       let balanceDiff = 0;
       let nodesChanged = false;
       
+      let multiplier = 1.0;
+      if (ownedUpgrades.includes("overclock-license")) {
+        multiplier += 0.10;
+      }
+      if (ownedUpgrades.includes("cooling-booster")) {
+        multiplier += 0.15;
+      }
+      if (overclocked) {
+        multiplier += 0.15;
+      }
+      
       const updatedNodes = nodesList.map(node => {
         if (node.status === "activating" && node.created_at) {
           const elapsed = Date.now() - new Date(node.created_at).getTime();
-          if (elapsed >= 60000) {
+          if (elapsed >= 120000) { // 2 minutes activation delay
             nodesChanged = true;
             const updatedNode = { ...node, status: "online" };
             
@@ -573,7 +618,7 @@ export default function Dashboard() {
         }
 
         if (node.status === "online" && systemActive) {
-          balanceDiff += getRate(node.productName) * 3;
+          balanceDiff += getRate(node.productName) * 3 * multiplier;
         }
 
         return node;
@@ -606,7 +651,7 @@ export default function Dashboard() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [nodesList, systemActive]);
+  }, [nodesList, systemActive, ownedUpgrades, overclocked]);
 
   const handleSignOut = async () => {
     try {
@@ -762,6 +807,18 @@ export default function Dashboard() {
           </button>
 
           <button
+            onClick={() => setActiveTab("shop")}
+            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              activeTab === "shop" 
+                ? "bg-[#00f2ff] text-black" 
+                : "text-gray-500 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <ShoppingBag size={14} />
+            Shop
+          </button>
+
+          <button
             onClick={() => setActiveTab("purchases")}
             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === "purchases" 
@@ -769,7 +826,7 @@ export default function Dashboard() {
                 : "text-gray-500 hover:text-white hover:bg-white/5"
             }`}
           >
-            <ShoppingBag size={14} />
+            <Package size={14} />
             {l.dashPurchases || "Order History"}
           </button>
 
@@ -842,6 +899,7 @@ export default function Dashboard() {
               {activeTab === "settings" && t("dashSettings")}
               {activeTab === "purchases" && (l.dashPurchases || "Order History")}
               {activeTab === "support" && (l.dashSupport || "Support")}
+              {activeTab === "shop" && "Store & Upgrades"}
               {activeTab === "admin" && l.adminConsole}
             </h1>
             <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wider mt-0.5">
@@ -964,6 +1022,16 @@ export default function Dashboard() {
               <div className="glass-card p-2 border border-white/5 bg-[#050505]/40">
                 <WalletServices btcPrice={btcPrice} usdBalance={usdBalance} setUsdBalance={setUsdBalance} />
               </div>
+            </div>
+          )}
+
+          {activeTab === "shop" && (
+            <div className="space-y-6">
+              <ShopView 
+                usdBalance={usdBalance} 
+                setUsdBalance={setUsdBalance} 
+                onPurchaseSuccess={reloadUpgrades} 
+              />
             </div>
           )}
 
@@ -1205,7 +1273,7 @@ export default function Dashboard() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id as any)}
-                className={`flex flex-col items-center justify-center w-16 h-12 rounded-xl transition-all ${
+                className={`flex flex-col items-center justify-center flex-1 h-12 rounded-xl transition-all ${
                   isActive ? "text-[#00f2ff]" : "text-gray-500 hover:text-gray-300"
                 }`}
               >

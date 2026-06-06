@@ -623,7 +623,7 @@ export default function MiningDashboard({
                           <>
                             {(() => {
                               const elapsed = Date.now() - new Date(node.created_at || Date.now()).getTime();
-                              const remaining = Math.max(0, Math.ceil((60000 - elapsed) / 1000));
+                              const remaining = Math.max(0, Math.ceil((120000 - elapsed) / 1000));
                               return remaining > 0 ? `Activating (${remaining}s)` : "Online";
                             })()}
                           </>
