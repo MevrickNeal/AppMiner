@@ -4,8 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Flame, Snowflake, Shield, Lock, Zap, CheckCircle2,
-  ArrowRight, Eye, EyeOff, Usb, Key, X, Loader2, HardDrive
+  ArrowRight, Eye, EyeOff, Usb, Key, X, HardDrive
 } from "lucide-react";
+import Image from "next/image";
 import { useTranslation } from "@/context/LanguageContext";
 
 // Localized Wallet Dictionary
@@ -704,8 +705,14 @@ export default function WalletServices({ btcPrice = 64250 }: { btcPrice?: number
 
                 {usbStep === "verifying" && (
                   <div className="space-y-6 py-4">
-                    <div className="mx-auto w-16 h-16 rounded-full bg-[#00f2ff]/10 flex items-center justify-center text-[#00f2ff]">
-                      <Loader2 size={32} className="animate-spin" />
+                    <div className="mx-auto w-16 h-16 flex items-center justify-center relative">
+                      <Image
+                        src="/Products/loading.gif"
+                        alt="Verifying"
+                        fill
+                        className="object-contain"
+                        unoptimized
+                      />
                     </div>
                     <div>
                       <h4 className="text-lg font-black uppercase tracking-tight text-[#00f2ff] mb-2">

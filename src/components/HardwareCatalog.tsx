@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ShoppingCart, BarChart2, Zap, ChevronRight, X, Cpu,
   Thermometer, Weight, Wifi, Volume2, Box, Activity,
-  Shield, Clock, Package, Loader2, CheckCircle, ArrowLeft,
+  Shield, Clock, Package, CheckCircle, ArrowLeft,
   CreditCard, Globe, Mail, User
 } from "lucide-react";
 import Image from "next/image";
@@ -1239,9 +1239,14 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
     <div className="flex-1 overflow-y-auto p-6 flex flex-col justify-between">
       {processing ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-6 py-12">
-          <div className="relative w-16 h-16 flex items-center justify-center">
-            <Loader2 className="w-12 h-12 text-[#00f2ff] animate-spin absolute" />
-            <div className="w-6 h-6 bg-[#00f2ff]/20 rounded-full animate-ping" />
+          <div className="relative w-28 h-28">
+            <Image
+              src="/Products/loading.gif"
+              alt="Processing"
+              fill
+              className="object-contain"
+              unoptimized
+            />
           </div>
           <div className="text-center space-y-2">
             <h4 className="text-sm font-black uppercase tracking-widest text-white animate-pulse">

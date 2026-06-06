@@ -7,7 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { 
   LayoutDashboard, Wallet, Cpu, LogOut, Shield, 
-  Settings, Bell, ChevronRight, User, Terminal, Loader2,
+  Settings, Bell, ChevronRight, User, Terminal,
   ShieldAlert, UserX, Activity, Database, AlertTriangle, Play, Square,
   ShoppingBag, LifeBuoy, Globe
 } from "lucide-react";
@@ -513,12 +513,13 @@ export default function Dashboard() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#00f2ff]/5 rounded-full blur-[120px] pointer-events-none" />
         
         <div className="relative z-10 flex flex-col items-center gap-6">
-          <div className="relative w-16 h-16 animate-pulse">
+          <div className="relative w-36 h-36">
             <Image
-              src="/Products/icon blue.png"
-              alt="AppsMiners Logo"
+              src="/Products/loading.gif"
+              alt="AppsMiners Loading"
               fill
               className="object-contain"
+              unoptimized
             />
           </div>
           <div className="flex flex-col items-center gap-2">
@@ -529,7 +530,6 @@ export default function Dashboard() {
               {l.connectingGate}
             </span>
           </div>
-          <Loader2 className="w-5 h-5 text-[#00f2ff] animate-spin opacity-60" />
         </div>
       </div>
     );
