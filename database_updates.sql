@@ -50,3 +50,16 @@ CREATE TRIGGER on_auth_user_created_wallet
 INSERT INTO public.wallets (user_id, hot_wallet_balance, cold_vault_balance)
 SELECT id, 0.00000000, 0.00000000 FROM auth.users
 WHERE NOT EXISTS (SELECT 1 FROM public.wallets WHERE public.wallets.user_id = auth.users.id);
+
+-- 4. Add usd_balance to wallets for starting credit & mining simulation
+ALTER TABLE public.wallets ADD COLUMN IF NOT EXISTS usd_balance NUMERIC DEFAULT 100.00;
+
+-- Update trigger function to initialize new wallets with 100.00 USD
+CREATE OR REPLACE FUNCTION public.handle_new_wallet()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.wallets (user_id, hot_wallet_balance, cold_vault_balance, usd_balance)
+  VALUES (new.id, 0.00000000, 0.00000000, 100.00);
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

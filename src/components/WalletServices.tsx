@@ -362,7 +362,15 @@ function BalanceMeter({ hot, cold, labels }: { hot: number; cold: number; labels
   );
 }
 
-export default function WalletServices({ btcPrice = 64250 }: { btcPrice?: number }) {
+export default function WalletServices({ 
+  btcPrice = 64250,
+  usdBalance,
+  setUsdBalance
+}: { 
+  btcPrice?: number;
+  usdBalance?: number;
+  setUsdBalance?: (val: number) => void;
+}) {
   const { language, isRtl } = useTranslation();
   const code = language.code;
   const labels = WALLET_I18N[code] || WALLET_I18N.EN;
@@ -387,12 +395,15 @@ export default function WalletServices({ btcPrice = 64250 }: { btcPrice?: number
     
   const activeDesc = activeWallet === "hot" ? labels.hotDesc : labels.coldDesc;
   
+  const localUsd = usdBalance !== undefined ? usdBalance : 100.00;
+  const hotBtc = localUsd / btcPrice;
+
   const activeBalance = activeWallet === "hot" 
-    ? "4.2831 BTC" 
+    ? `${hotBtc.toFixed(8)} BTC` 
     : (vaultUnlocked ? "38.9210 BTC" : "••.•••• BTC");
     
   const activeUsd = activeWallet === "hot" 
-    ? `$${(4.2831 * btcPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}` 
+    ? `$${localUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
     : (vaultUnlocked ? `$${(38.9210 * btcPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "$•,•••,•••");
     
   const activeStats = activeWallet === "hot" ? labels.hotStats : labels.coldStats;

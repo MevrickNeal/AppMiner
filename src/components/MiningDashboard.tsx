@@ -325,8 +325,17 @@ function Gauge({ pct, color, label }: { pct: number; color: string; label: strin
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────
-export default function MiningDashboard() {
+export default function MiningDashboard({
+  nodes,
+  setNodes,
+  usdBalance,
+  onRemoteControl
+}: {
+  nodes?: any[];
+  setNodes?: React.Dispatch<React.SetStateAction<any[]>>;
+  usdBalance?: number;
+  onRemoteControl?: (nodeId: string, newStatus: string) => void;
+}) {
   const { language, isRtl } = useTranslation();
   const code = language.code;
   const labels = DASH_I18N[code] || DASH_I18N.EN;
@@ -338,7 +347,51 @@ export default function MiningDashboard() {
   const [liveHashrate, setLiveHashrate] = useState(180);
   const [uptime] = useState(99.94);
   const [purchasedNodes, setPurchasedNodes] = useState<any[]>([]);
+  const [secondsTick, setSecondsTick] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Countdown timer trigger
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsTick(s => s + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const displayedNodes = nodes !== undefined ? nodes : purchasedNodes;
+
+  const handleRemoteControl = async (nodeId: string, newStatus: string) => {
+    if (onRemoteControl) {
+      onRemoteControl(nodeId, newStatus);
+      return;
+    }
+
+    const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+    if (isDemoMode) {
+      const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
+      if (localNodesStr) {
+        const currentNodes = JSON.parse(localNodesStr);
+        const updated = currentNodes.map((n: any) => n.id === nodeId ? { ...n, status: newStatus } : n);
+        localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(updated));
+        if (setNodes) setNodes(updated);
+        setPurchasedNodes(updated);
+      }
+    } else {
+      const { error } = await supabase
+        .from("nodes")
+        .update({ status: newStatus })
+        .eq("id", nodeId);
+
+      if (!error) {
+        if (setNodes) {
+          setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, status: newStatus } : n));
+        }
+        setPurchasedNodes(prev => prev.map(n => n.id === nodeId ? { ...n, status: newStatus } : n));
+      } else {
+        alert("Remote control failed: " + error.message);
+      }
+    }
+  };
 
   // Initialize and re-generate charts on mount or language switch
   useEffect(() => {
@@ -354,7 +407,9 @@ export default function MiningDashboard() {
       if (isDemoMode) {
         const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
         if (localNodesStr) {
-          setPurchasedNodes(JSON.parse(localNodesStr));
+          const parsed = JSON.parse(localNodesStr);
+          setPurchasedNodes(parsed);
+          if (setNodes) setNodes(parsed);
         } else {
           const defaultNodes = [
             { id: "demo-n1", productName: "AppsMiners Nano Premium", hashrate: "10 TH/s", power: "10 W", region: "Europe-West", status: "online" },
@@ -363,6 +418,7 @@ export default function MiningDashboard() {
           ];
           localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(defaultNodes));
           setPurchasedNodes(defaultNodes);
+          if (setNodes) setNodes(defaultNodes);
         }
         return;
       }
@@ -383,13 +439,15 @@ export default function MiningDashboard() {
           hashrate: n.hashrate,
           power: n.power,
           region: n.region,
-          status: n.status
+          status: n.status,
+          created_at: n.created_at
         }));
         setPurchasedNodes(mappedNodes);
+        if (setNodes) setNodes(mappedNodes);
       }
     }
     fetchNodes();
-  }, [code, labels.days]);
+  }, [code, labels.days, setNodes]);
 
   // Push a new data point every 2s to simulate live feed
   useEffect(() => {
@@ -533,34 +591,111 @@ export default function MiningDashboard() {
             <Cpu size={18} className="text-[#00f2ff]" /> {nl.connectedNodes}
           </h4>
           
-          {purchasedNodes.length > 0 ? (
+          {displayedNodes.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {purchasedNodes.map((node) => (
+              {displayedNodes.map((node) => (
                 <div key={node.id} className="glass-card p-6 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h5 className="text-lg font-black text-white">{node.productName}</h5>
-                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{node.id}</p>
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h5 className="text-lg font-black text-white">{node.productName}</h5>
+                        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{node.id}</p>
+                      </div>
+                      <div className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${
+                        node.status === "online" 
+                          ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" 
+                          : node.status === "paused" 
+                            ? "bg-amber-500/10 border border-amber-500/20 text-amber-400" 
+                            : node.status === "shutdown"
+                              ? "bg-red-500/10 border border-red-500/20 text-red-400"
+                              : "bg-[#00f2ff]/10 border border-[#00f2ff]/20 text-[#00f2ff]"
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          node.status === "online" 
+                            ? "bg-emerald-400 animate-pulse" 
+                            : node.status === "paused" 
+                              ? "bg-amber-400" 
+                              : node.status === "shutdown"
+                                ? "bg-red-400"
+                                : "bg-[#00f2ff] animate-ping"
+                        }`} />
+                        {node.status === "activating" ? (
+                          <>
+                            {(() => {
+                              const elapsed = Date.now() - new Date(node.created_at || Date.now()).getTime();
+                              const remaining = Math.max(0, Math.ceil((60000 - elapsed) / 1000));
+                              return remaining > 0 ? `Activating (${remaining}s)` : "Online";
+                            })()}
+                          </>
+                        ) : (
+                          node.status
+                        )}
+                      </div>
                     </div>
-                    <div className="px-2 py-1 rounded bg-[#00f2ff]/10 border border-[#00f2ff]/20 text-[#00f2ff] text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#00f2ff] animate-pulse" />
-                      {node.status}
+                    
+                    <div className="grid grid-cols-2 gap-4 mt-2 pt-4 border-t border-white/5">
+                      <div>
+                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{nl.hashrate}</p>
+                        <p className="text-sm font-black text-white">{node.hashrate}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{nl.power}</p>
+                        <p className="text-sm font-black text-white">{node.power}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{nl.region}</p>
+                        <p className="text-sm font-black text-white">{node.region}</p>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 mt-2 pt-4 border-t border-white/5">
-                    <div>
-                      <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{nl.hashrate}</p>
-                      <p className="text-sm font-black text-white">{node.hashrate}</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{nl.power}</p>
-                      <p className="text-sm font-black text-white">{node.power}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{nl.region}</p>
-                      <p className="text-sm font-black text-white">{node.region}</p>
-                    </div>
+
+                  {/* Remote Controls */}
+                  <div className="mt-4 pt-4 border-t border-white/5 flex gap-2">
+                    {node.status === "online" && (
+                      <>
+                        <button
+                          onClick={() => handleRemoteControl(node.id, "paused")}
+                          className="flex-1 py-1.5 px-3 rounded bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-wider transition-colors"
+                        >
+                          Pause
+                        </button>
+                        <button
+                          onClick={() => handleRemoteControl(node.id, "shutdown")}
+                          className="flex-1 py-1.5 px-3 rounded bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-wider transition-colors"
+                        >
+                          Shutdown
+                        </button>
+                      </>
+                    )}
+                    {node.status === "paused" && (
+                      <>
+                        <button
+                          onClick={() => handleRemoteControl(node.id, "online")}
+                          className="flex-1 py-1.5 px-3 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-colors"
+                        >
+                          Resume
+                        </button>
+                        <button
+                          onClick={() => handleRemoteControl(node.id, "shutdown")}
+                          className="flex-1 py-1.5 px-3 rounded bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-wider transition-colors"
+                        >
+                          Shutdown
+                        </button>
+                      </>
+                    )}
+                    {node.status === "shutdown" && (
+                      <button
+                        onClick={() => handleRemoteControl(node.id, "online")}
+                        className="w-full py-1.5 px-3 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-colors"
+                      >
+                        Start Mining
+                      </button>
+                    )}
+                    {node.status === "activating" && (
+                      <div className="w-full text-center text-xs text-[#00f2ff] font-bold uppercase tracking-wider animate-pulse py-1">
+                        Connecting to pool...
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

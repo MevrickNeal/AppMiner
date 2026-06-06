@@ -1110,8 +1110,9 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
     }
 
     // Check auth
+    const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    if (!session && !isDemoMode) {
       alert("You must be logged in to make a purchase. Redirecting to login...");
       router.push("/login");
       return;
@@ -1139,6 +1140,42 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
               const cleanHashrate = product.hashrate || (product.id === "starter-kit" ? "2.15 TH/s" : "50 TH/s");
               const cleanPower = product.id === "starter-kit" ? "185 W" : (product.id === "t200" ? "5,000 W" : product.id === "f100" ? "2,800 W" : product.id === "f50" ? "1,500 W" : product.id === "mini" ? "45 W" : product.id === "nano" ? "10 W" : "5 W");
 
+              // 1. Fetch current USD balance
+              let currentBalance = 100.00;
+              const localBal = localStorage.getItem("appsminers_usd_balance");
+              if (localBal !== null) {
+                currentBalance = parseFloat(localBal);
+              } else {
+                localStorage.setItem("appsminers_usd_balance", "100.00");
+              }
+
+              if (!isDemoMode && session) {
+                const { data: wallet } = await supabase
+                  .from("wallets")
+                  .select("usd_balance")
+                  .eq("user_id", session.user.id)
+                  .single();
+                if (wallet && wallet.usd_balance !== null) {
+                  currentBalance = parseFloat(String(wallet.usd_balance));
+                }
+              }
+
+              // 2. Enforce credit check
+              if (currentBalance < numericPrice) {
+                throw new Error(`Insufficient account credit. You have $${currentBalance.toFixed(2)} USD, but this device costs $${numericPrice.toFixed(2)} USD. Work your way up by mining to earn more credit!`);
+              }
+
+              // 3. Deduct credit
+              const newBalance = currentBalance - numericPrice;
+              localStorage.setItem("appsminers_usd_balance", newBalance.toFixed(2));
+
+              if (!isDemoMode && session) {
+                await supabase
+                  .from("wallets")
+                  .update({ usd_balance: newBalance })
+                  .eq("user_id", session.user.id);
+              }
+
               if (isDemoMode) {
                 // Mock local storage purchase for nodes
                 const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
@@ -1154,7 +1191,8 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
                   hashrate: cleanHashrate,
                   power: cleanPower,
                   region: region.split(" (")[0],
-                  status: "online"
+                  status: "activating",
+                  created_at: new Date().toISOString()
                 };
                 localStorage.setItem("appsminers_purchased_nodes", JSON.stringify([newNode, ...currentNodes]));
 
@@ -1181,6 +1219,7 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
               }
 
               // Insert purchase to Supabase
+              if (!session) throw new Error("No active session found.");
               const { data: purchase, error: purchaseError } = await supabase
                 .from("purchases")
                 .insert({
@@ -1205,7 +1244,7 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
                   hashrate: cleanHashrate,
                   power: cleanPower,
                   region: region.split(" (")[0],
-                  status: "online"
+                  status: "activating" // Set to activating initially
                 });
 
               if (nodeError) throw nodeError;
@@ -1215,7 +1254,7 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
               router.push(`/dashboard`);
             } catch (error: any) {
               console.error(error);
-              alert("Checkout failed: " + error.message);
+              alert(error.message);
               setProcessing(false);
             }
           }, 1000);

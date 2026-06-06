@@ -363,6 +363,10 @@ export default function Dashboard() {
   const [allProfiles, setAllProfiles] = useState<any[]>([]);
   const [allNodes, setAllNodes] = useState<any[]>([]);
 
+  // User Balance and Nodes simulation states
+  const [usdBalance, setUsdBalance] = useState(100.00);
+  const [nodesList, setNodesList] = useState<any[]>([]);
+
   const code = language.code;
   const l = DASH_LOCAL_I18N[code] || DASH_LOCAL_I18N.EN;
 
@@ -380,6 +384,17 @@ export default function Dashboard() {
       try {
         const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
         setIsDemo(isDemoMode);
+
+        // Initialize USD balance
+        let balance = 100.00;
+        const localBal = localStorage.getItem("appsminers_usd_balance");
+        if (localBal !== null) {
+          balance = parseFloat(localBal);
+        } else {
+          localStorage.setItem("appsminers_usd_balance", "100.00");
+        }
+        setUsdBalance(balance);
+
         if (isDemoMode) {
           setUserEmail("operator@appsminers.com");
           setIsAdmin(true);
@@ -400,6 +415,20 @@ export default function Dashboard() {
             { id: "5", name: "DeepVault-Node-3", status: "online", hashrate: 62.4 }
           ]);
           
+          // Load demo nodes list
+          const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
+          if (localNodesStr) {
+            setNodesList(JSON.parse(localNodesStr));
+          } else {
+            const defaultNodes = [
+              { id: "demo-n1", productName: "AppsMiners Nano Premium", hashrate: "10 TH/s", power: "10 W", region: "Europe-West", status: "online", created_at: new Date(Date.now() - 3600000).toISOString() },
+              { id: "demo-n2", productName: "AppsMiners Pocket Pro", hashrate: "110.2 TH/s", power: "550 W", region: "US-East", status: "online", created_at: new Date(Date.now() - 3600000).toISOString() },
+              { id: "demo-n3", productName: "AppsMiners Mini Enterprise", hashrate: "220.5 TH/s", power: "1200 W", region: "Asia-Pacific", status: "online", created_at: new Date(Date.now() - 3600000).toISOString() }
+            ];
+            localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(defaultNodes));
+            setNodesList(defaultNodes);
+          }
+
           setLoading(false);
           return;
         }
@@ -408,6 +437,39 @@ export default function Dashboard() {
         if (session) {
           setUserEmail(session.user?.email || "operator@appsminers.com");
           
+          // Fetch wallet balance from Supabase
+          const { data: wallet } = await supabase
+            .from("wallets")
+            .select("usd_balance")
+            .eq("user_id", session.user.id)
+            .single();
+
+          if (wallet && wallet.usd_balance !== null) {
+            balance = parseFloat(String(wallet.usd_balance));
+            localStorage.setItem("appsminers_usd_balance", balance.toFixed(2));
+            setUsdBalance(balance);
+          }
+
+          // Fetch user's nodes list
+          const { data: nodesData } = await supabase
+            .from("nodes")
+            .select("*")
+            .eq("user_id", session.user.id)
+            .order("created_at", { ascending: false });
+
+          if (nodesData) {
+            const mappedNodes = nodesData.map(n => ({
+              id: n.id,
+              productName: n.product_name,
+              hashrate: n.hashrate,
+              power: n.power,
+              region: n.region,
+              status: n.status,
+              created_at: n.created_at
+            }));
+            setNodesList(mappedNodes);
+          }
+
           // Check if admin
           const { data: profile } = await supabase
             .from("profiles")
@@ -463,6 +525,88 @@ export default function Dashboard() {
       }
     };
   }, [router]);
+
+  // Real-time mining earnings tick loop
+  useEffect(() => {
+    let lastSyncTime = Date.now();
+    const interval = setInterval(async () => {
+      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+      
+      const getRate = (name: string): number => {
+        const lower = name.toLowerCase();
+        if (lower.includes("t200")) return 0.05;
+        if (lower.includes("f100")) return 0.025;
+        if (lower.includes("f50")) return 0.0125;
+        if (lower.includes("starter")) return 0.006;
+        if (lower.includes("mini")) return 0.002;
+        if (lower.includes("nano")) return 0.0006;
+        if (lower.includes("pocket")) return 0.0002;
+        return 0.001;
+      };
+
+      let balanceDiff = 0;
+      let nodesChanged = false;
+      
+      const updatedNodes = nodesList.map(node => {
+        if (node.status === "activating" && node.created_at) {
+          const elapsed = Date.now() - new Date(node.created_at).getTime();
+          if (elapsed >= 60000) {
+            nodesChanged = true;
+            const updatedNode = { ...node, status: "online" };
+            
+            if (isDemoMode) {
+              const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
+              if (localNodesStr) {
+                const currentNodes = JSON.parse(localNodesStr);
+                const localUpdated = currentNodes.map((n: any) => n.id === node.id ? { ...n, status: "online" } : n);
+                localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(localUpdated));
+              }
+            } else {
+              supabase
+                .from("nodes")
+                .update({ status: "online" })
+                .eq("id", node.id)
+                .then();
+            }
+            return updatedNode;
+          }
+        }
+
+        if (node.status === "online" && systemActive) {
+          balanceDiff += getRate(node.productName) * 3;
+        }
+
+        return node;
+      });
+
+      if (nodesChanged) {
+        setNodesList(updatedNodes);
+      }
+
+      if (balanceDiff > 0) {
+        setUsdBalance(prev => {
+          const nextBal = prev + balanceDiff;
+          localStorage.setItem("appsminers_usd_balance", nextBal.toFixed(2));
+          
+          if (!isDemoMode && Date.now() - lastSyncTime >= 15000) {
+            lastSyncTime = Date.now();
+            supabase.auth.getSession().then(({ data: { session } }) => {
+              if (session) {
+                supabase
+                  .from("wallets")
+                  .update({ usd_balance: nextBal })
+                  .eq("user_id", session.user.id)
+                  .then();
+              }
+            });
+          }
+          return nextBal;
+        });
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [nodesList, systemActive]);
 
   const handleSignOut = async () => {
     try {
@@ -742,10 +886,10 @@ export default function Dashboard() {
                   <div className="absolute top-0 left-0 h-1 bg-amber-500 w-full transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
                   <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{t("dashWalletValue")}</p>
                   <h3 className="text-3xl font-black text-[#00f2ff]">
-                    ${(43.2041 * btcPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })} USD
+                    ${usdBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
                   </h3>
                   <div className="mt-4 flex items-center justify-between text-xs text-gray-400 font-bold">
-                    <span>{l.btcTotal}</span>
+                    <span>{(usdBalance / btcPrice).toFixed(8)} BTC total</span>
                     <span className="text-[10px] text-[#00f2ff]/80 uppercase tracking-wider">LIVE: ${btcPrice.toLocaleString()} / BTC</span>
                   </div>
                 </div>
@@ -810,7 +954,7 @@ export default function Dashboard() {
           {activeTab === "mining" && (
             <div className="space-y-6">
               <div className="glass-card p-2 border border-white/5 bg-[#050505]/40">
-                <MiningDashboard />
+                <MiningDashboard nodes={nodesList} setNodes={setNodesList} usdBalance={usdBalance} />
               </div>
             </div>
           )}
@@ -818,7 +962,7 @@ export default function Dashboard() {
           {activeTab === "wallet" && (
             <div className="space-y-6">
               <div className="glass-card p-2 border border-white/5 bg-[#050505]/40">
-                <WalletServices btcPrice={btcPrice} />
+                <WalletServices btcPrice={btcPrice} usdBalance={usdBalance} setUsdBalance={setUsdBalance} />
               </div>
             </div>
           )}
