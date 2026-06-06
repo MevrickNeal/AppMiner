@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
-import { Activity, TrendingUp, Zap, Cpu, BarChart3, Hash } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Activity, TrendingUp, Zap, Cpu, BarChart3, Hash, Thermometer, Wind, Truck, Cloud, Home, Wrench, ShieldCheck, Package } from "lucide-react";
 import { useTranslation } from "@/context/LanguageContext";
 import { supabase } from "@/lib/supabase";
 
@@ -298,6 +298,216 @@ function BarChart({ data }: { data: { day: string; btc: number }[] }) {
   );
 }
 
+// ─── NodeCardComponent ───────────────────────────────────────
+function NodeCardComponent({ 
+  node, 
+  handleRemoteControl, 
+  nl 
+}: { 
+  node: any; 
+  handleRemoteControl: (id: string, stat: string) => void; 
+  nl: any;
+}) {
+  const baseHash = parseFloat(node.hashrate) || 0;
+  const unit = node.hashrate.replace(/[0-9.]/g, "").trim() || "TH/s";
+  
+  const [fluctuatedHash, setFluctuatedHash] = useState(node.status === "online" ? baseHash : 0);
+  const [temp, setTemp] = useState(node.status === "online" ? 70.4 : 32.0);
+  const [fan, setFan] = useState(node.status === "online" ? 4180 : 0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (node.status === "online") {
+        // Fluctuate hashrate by ±1.5% for live physics feel
+        const variance = (Math.random() - 0.5) * 0.03 * baseHash;
+        setFluctuatedHash(Number((baseHash + variance).toFixed(2)));
+        
+        // Warm up or hover temperature between 68.0°C and 74.0°C
+        setTemp(prev => {
+          if (prev < 68) return prev + 2.5;
+          return 70 + (Math.random() - 0.5) * 2;
+        });
+
+        // Warm up or hover fan speed between 3800 and 4400 RPM
+        setFan(prev => {
+          if (prev < 3800) return prev + 350;
+          return 4100 + Math.round((Math.random() - 0.5) * 120);
+        });
+      } else {
+        // Drop hashrate to 0 instantly
+        setFluctuatedHash(0);
+        
+        // Cooling down to room temp
+        setTemp(prev => {
+          if (prev > 34) return prev - 2.0;
+          return 32.0;
+        });
+
+        // Stop fans spinning
+        setFan(prev => {
+          if (prev > 0) return Math.max(0, prev - 450);
+          return 0;
+        });
+      }
+    }, 2000);
+
+    return () => clearInterval(timer);
+  }, [node.status, baseHash]);
+
+  const conditionText = () => {
+    if (node.status === "online") return "Optimal Performance";
+    if (node.status === "paused") return "Mining Paused (Standby)";
+    if (node.status === "shutdown") return "System Offline";
+    return "Pool Handshake Active";
+  };
+
+  return (
+    <div className="glass-card p-6 flex flex-col justify-between">
+      <div>
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h5 className="text-lg font-black text-white">{node.productName}</h5>
+            <div className="flex items-center gap-1.5 mt-1">
+              <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider font-mono">{node.id.slice(0, 8)}...</p>
+              <span className="text-gray-700 font-black text-[9px]">•</span>
+              <span className={`text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${
+                node.hosting_type === "physical" ? "text-emerald-400" : "text-[#00f2ff]/80"
+              }`}>
+                {node.hosting_type === "physical" ? (
+                  <><Home size={10} /> Local Connection</>
+                ) : (
+                  <><Cloud size={10} /> Remote Hosted</>
+                )}
+              </span>
+            </div>
+          </div>
+          <div className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${
+            node.status === "online" 
+              ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" 
+              : node.status === "paused" 
+                ? "bg-amber-500/10 border border-amber-500/20 text-amber-400" 
+                : node.status === "shutdown"
+                  ? "bg-red-500/10 border border-red-500/20 text-red-400"
+                  : "bg-[#00f2ff]/10 border border-[#00f2ff]/20 text-[#00f2ff]"
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              node.status === "online" 
+                ? "bg-emerald-400 animate-pulse" 
+                : node.status === "paused" 
+                  ? "bg-amber-400" 
+                  : node.status === "shutdown"
+                    ? "bg-red-400"
+                    : "bg-[#00f2ff] animate-ping"
+            }`} />
+            {node.status === "activating" ? (
+              <>
+                {(() => {
+                  const elapsed = Date.now() - new Date(node.created_at || Date.now()).getTime();
+                  const remaining = Math.max(0, Math.ceil((120000 - elapsed) / 1000));
+                  return remaining > 0 ? `Activating (${remaining}s)` : "Online";
+                })()}
+              </>
+            ) : (
+              node.status
+            )}
+          </div>
+        </div>
+        
+        {/* Real-time physics telemetry */}
+        <div className="grid grid-cols-2 gap-4 mt-2 pt-4 border-t border-white/5">
+          <div>
+            <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{nl.hashrate}</p>
+            <p className="text-sm font-black text-white font-mono">{node.status === "online" ? `${fluctuatedHash.toFixed(2)} ${unit}` : `0.00 ${unit}`}</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{nl.power}</p>
+            <p className="text-sm font-black text-white font-mono">{node.status === "online" ? node.power : "0 W"}</p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Thermometer size={14} className="text-[#00f2ff]/60" />
+            <div>
+              <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Core Temp</p>
+              <p className={`text-xs font-black font-mono ${temp > 72 ? "text-amber-400" : "text-white"}`}>
+                {temp.toFixed(1)}°C
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Wind size={14} className="text-[#00f2ff]/60" />
+            <div>
+              <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Fan Speed</p>
+              <p className="text-xs font-black text-white font-mono">{fan.toLocaleString()} RPM</p>
+            </div>
+          </div>
+          <div className="col-span-2 pt-2 border-t border-white/5 flex justify-between items-center">
+            <div>
+              <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Status Telemetry</p>
+              <p className="text-[10px] font-bold text-[#00f2ff]/80 uppercase tracking-wider">{conditionText()}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Yield Rate</p>
+              <p className={`text-[10px] font-black uppercase tracking-wider ${
+                node.hosting_type === "remote" ? "text-amber-400" : "text-emerald-400"
+              }`}>
+                {node.hosting_type === "remote" ? "85% (-15% Fee)" : "100% Yield"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Remote Controls */}
+      <div className="mt-4 pt-4 border-t border-white/5 flex gap-2">
+        {node.status === "online" && (
+          <>
+            <button
+              onClick={() => handleRemoteControl(node.id, "paused")}
+              className="flex-1 py-1.5 px-3 rounded bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-wider transition-colors"
+            >
+              Pause
+            </button>
+            <button
+              onClick={() => handleRemoteControl(node.id, "shutdown")}
+              className="flex-1 py-1.5 px-3 rounded bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-wider transition-colors"
+            >
+              Shutdown
+            </button>
+          </>
+        )}
+        {node.status === "paused" && (
+          <>
+            <button
+              onClick={() => handleRemoteControl(node.id, "online")}
+              className="flex-1 py-1.5 px-3 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-colors"
+            >
+              Resume
+            </button>
+            <button
+              onClick={() => handleRemoteControl(node.id, "shutdown")}
+              className="flex-1 py-1.5 px-3 rounded bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-wider transition-colors"
+            >
+              Shutdown
+            </button>
+          </>
+        )}
+        {node.status === "shutdown" && (
+          <button
+            onClick={() => handleRemoteControl(node.id, "online")}
+            className="w-full py-1.5 px-3 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-colors"
+          >
+            Start Mining
+          </button>
+        )}
+        {node.status === "activating" && (
+          <div className="w-full text-center text-xs text-[#00f2ff] font-bold uppercase tracking-wider animate-pulse py-1">
+            Connecting to pool...
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Radial efficiency gauge ─────────────────────────────────
 function Gauge({ pct, color, label }: { pct: number; color: string; label: string }) {
   const r = 28; const circ = 2 * Math.PI * r;
@@ -360,6 +570,48 @@ export default function MiningDashboard({
 
   const displayedNodes = nodes !== undefined ? nodes : purchasedNodes;
 
+  const handleSetupNode = async (nodeId: string, updates: any) => {
+    const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+    if (isDemoMode) {
+      const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
+      if (localNodesStr) {
+        const currentNodes = JSON.parse(localNodesStr);
+        const updated = currentNodes.map((n: any) => 
+          n.id === nodeId ? { ...n, ...updates } : n
+        );
+        localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(updated));
+        if (setNodes) setNodes(updated);
+        setPurchasedNodes(updated);
+      }
+    } else {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { error } = await supabase
+        .from("nodes")
+        .update(updates)
+        .eq("id", nodeId)
+        .eq("user_id", session.user.id);
+
+      if (!error) {
+        if (setNodes) {
+          setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, ...updates } : n));
+        }
+        setPurchasedNodes(prev => prev.map(n => n.id === nodeId ? { ...n, ...updates } : n));
+      } else {
+        alert("Node setup failed: " + error.message);
+      }
+    }
+  };
+
+  const activeNodes = displayedNodes.filter(
+    (n) => n.setup_configured === true || (n.status !== "pending_setup" && n.status !== "shipping" && n.status !== "delivered")
+  );
+
+  const inventoryNodes = displayedNodes.filter(
+    (n) => n.setup_configured !== true && (n.status === "pending_setup" || n.status === "shipping" || n.status === "delivered")
+  );
+
   const handleRemoteControl = async (nodeId: string, newStatus: string) => {
     if (onRemoteControl) {
       onRemoteControl(nodeId, newStatus);
@@ -377,10 +629,14 @@ export default function MiningDashboard({
         setPurchasedNodes(updated);
       }
     } else {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
       const { error } = await supabase
         .from("nodes")
         .update({ status: newStatus })
-        .eq("id", nodeId);
+        .eq("id", nodeId)
+        .eq("user_id", session.user.id);
 
       if (!error) {
         if (setNodes) {
@@ -440,6 +696,10 @@ export default function MiningDashboard({
           power: n.power,
           region: n.region,
           status: n.status,
+          hosting_type: n.hosting_type || "remote",
+          setup_configured: n.setup_configured !== undefined && n.setup_configured !== null ? n.setup_configured : false,
+          shipping_address: n.shipping_address || null,
+          shipping_started_at: n.shipping_started_at || null,
           created_at: n.created_at
         }));
         setPurchasedNodes(mappedNodes);
@@ -466,10 +726,13 @@ export default function MiningDashboard({
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
 
+  const activeCount = activeNodes.filter(n => n.status === "online" || n.status === "activating" || n.status === "paused").length;
+  const totalCount = displayedNodes.length;
+
   const STATS = [
     { icon: Hash,       label: labels.liveHashrate,   value: `${liveHashrate} TH/s`, color: "#00f2ff" },
     { icon: Zap,        label: labels.powerDraw,      value: "4,850 W",              color: "#f59e0b" },
-    { icon: Cpu,        label: labels.activeDevices,  value: "12 / 12",              color: "#10b981" },
+    { icon: Cpu,        label: labels.activeDevices,  value: `${activeCount} / ${totalCount}`, color: "#10b981" },
     { icon: TrendingUp, label: labels.todayEarnings,  value: "0.00341 BTC",          color: "#7c3aed" },
   ];
 
@@ -585,129 +848,270 @@ export default function MiningDashboard({
           </div>
         </div>
 
-        {/* Third Row: Connected Nodes */}
-        <div className="mt-8">
+        {/* Active Connected Nodes */}
+        <div className="mt-12">
           <h4 className="text-xl font-black mb-6 flex items-center gap-2 text-white/80 uppercase tracking-widest">
-            <Cpu size={18} className="text-[#00f2ff]" /> {nl.connectedNodes}
+            <Cpu size={18} className="text-[#00f2ff]" /> Active Mining Array
           </h4>
           
-          {displayedNodes.length > 0 ? (
+          {activeNodes.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayedNodes.map((node) => (
-                <div key={node.id} className="glass-card p-6 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h5 className="text-lg font-black text-white">{node.productName}</h5>
-                        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">{node.id}</p>
-                      </div>
-                      <div className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${
-                        node.status === "online" 
-                          ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" 
-                          : node.status === "paused" 
-                            ? "bg-amber-500/10 border border-amber-500/20 text-amber-400" 
-                            : node.status === "shutdown"
-                              ? "bg-red-500/10 border border-red-500/20 text-red-400"
-                              : "bg-[#00f2ff]/10 border border-[#00f2ff]/20 text-[#00f2ff]"
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          node.status === "online" 
-                            ? "bg-emerald-400 animate-pulse" 
-                            : node.status === "paused" 
-                              ? "bg-amber-400" 
-                              : node.status === "shutdown"
-                                ? "bg-red-400"
-                                : "bg-[#00f2ff] animate-ping"
-                        }`} />
-                        {node.status === "activating" ? (
-                          <>
-                            {(() => {
-                              const elapsed = Date.now() - new Date(node.created_at || Date.now()).getTime();
-                              const remaining = Math.max(0, Math.ceil((120000 - elapsed) / 1000));
-                              return remaining > 0 ? `Activating (${remaining}s)` : "Online";
-                            })()}
-                          </>
-                        ) : (
-                          node.status
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 mt-2 pt-4 border-t border-white/5">
-                      <div>
-                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{nl.hashrate}</p>
-                        <p className="text-sm font-black text-white">{node.hashrate}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{nl.power}</p>
-                        <p className="text-sm font-black text-white">{node.power}</p>
-                      </div>
-                      <div className="col-span-2">
-                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{nl.region}</p>
-                        <p className="text-sm font-black text-white">{node.region}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Remote Controls */}
-                  <div className="mt-4 pt-4 border-t border-white/5 flex gap-2">
-                    {node.status === "online" && (
-                      <>
-                        <button
-                          onClick={() => handleRemoteControl(node.id, "paused")}
-                          className="flex-1 py-1.5 px-3 rounded bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-wider transition-colors"
-                        >
-                          Pause
-                        </button>
-                        <button
-                          onClick={() => handleRemoteControl(node.id, "shutdown")}
-                          className="flex-1 py-1.5 px-3 rounded bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-wider transition-colors"
-                        >
-                          Shutdown
-                        </button>
-                      </>
-                    )}
-                    {node.status === "paused" && (
-                      <>
-                        <button
-                          onClick={() => handleRemoteControl(node.id, "online")}
-                          className="flex-1 py-1.5 px-3 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-colors"
-                        >
-                          Resume
-                        </button>
-                        <button
-                          onClick={() => handleRemoteControl(node.id, "shutdown")}
-                          className="flex-1 py-1.5 px-3 rounded bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-wider transition-colors"
-                        >
-                          Shutdown
-                        </button>
-                      </>
-                    )}
-                    {node.status === "shutdown" && (
-                      <button
-                        onClick={() => handleRemoteControl(node.id, "online")}
-                        className="w-full py-1.5 px-3 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-colors"
-                      >
-                        Start Mining
-                      </button>
-                    )}
-                    {node.status === "activating" && (
-                      <div className="w-full text-center text-xs text-[#00f2ff] font-bold uppercase tracking-wider animate-pulse py-1">
-                        Connecting to pool...
-                      </div>
-                    )}
-                  </div>
-                </div>
+              {activeNodes.map((node) => (
+                <NodeCardComponent 
+                  key={node.id} 
+                  node={node} 
+                  handleRemoteControl={handleRemoteControl} 
+                  nl={nl} 
+                />
               ))}
             </div>
           ) : (
             <div className="glass-card p-12 text-center text-gray-500">
-              <p className="text-sm font-black uppercase tracking-widest">{nl.noNodes}</p>
+              <p className="text-sm font-black uppercase tracking-widest">No active mining nodes connected. Complete setup below.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Hardware Inventory & Pending Setups */}
+        <div className="mt-12 pt-12 border-t border-white/5">
+          <h4 className="text-xl font-black mb-6 flex items-center gap-2 text-white/80 uppercase tracking-widest">
+            <Package size={18} className="text-[#00f2ff]" /> Hardware Inventory & Setups
+          </h4>
+          
+          {inventoryNodes.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {inventoryNodes.map((node) => (
+                <InventoryCardComponent 
+                  key={node.id} 
+                  node={node}
+                  handleSetupNode={handleSetupNode}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="glass-card p-12 text-center text-gray-500">
+              <p className="text-sm font-black uppercase tracking-widest">No pending setups. Purchase hardware from the Shop to expand your fleet.</p>
             </div>
           )}
         </div>
 
       </div>
     </section>
+  );
+}
+
+// ─── InventoryCardComponent ──────────────────────────────────
+function InventoryCardComponent({
+  node,
+  handleSetupNode
+}: {
+  node: any;
+  handleSetupNode: (id: string, updates: any) => void;
+}) {
+  const [setupMode, setSetupMode] = useState<"choose" | "shipping_input" | "physical_verify" | null>(null);
+  const [address, setAddress] = useState("");
+  const [physicalKey, setPhysicalKey] = useState("");
+
+  const handleShipSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!address.trim()) {
+      alert("Please enter a shipping address.");
+      return;
+    }
+    handleSetupNode(node.id, {
+      hosting_type: "physical",
+      status: "shipping",
+      shipping_address: address,
+      shipping_started_at: new Date().toISOString()
+    });
+    setSetupMode(null);
+  };
+
+  const handleKeySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!physicalKey.trim()) {
+      alert("Please enter a physical key.");
+      return;
+    }
+    handleSetupNode(node.id, {
+      status: "activating",
+      setup_configured: true,
+      created_at: new Date().toISOString()
+    });
+    setSetupMode(null);
+  };
+
+  let shippingProgress = 0;
+  if (node.status === "shipping" && node.shipping_started_at) {
+    const elapsed = Date.now() - new Date(node.shipping_started_at).getTime();
+    shippingProgress = Math.min(100, Math.floor((elapsed / 30000) * 100));
+  }
+
+  return (
+    <div className="glass-card p-6 flex flex-col justify-between border border-white/5 relative overflow-hidden group">
+      <div className="absolute top-0 left-0 w-1 h-full bg-[#00f2ff]/30" />
+      <div>
+        <div className="flex justify-between items-start mb-4 pl-2">
+          <div>
+            <h5 className="text-lg font-black text-white">{node.productName}</h5>
+            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider font-mono">SKU // {node.id.slice(0, 8)}...</p>
+          </div>
+          <span className={`px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${
+            node.status === "pending_setup" 
+              ? "bg-[#00f2ff]/10 text-[#00f2ff] border border-[#00f2ff]/20" 
+              : node.status === "shipping" 
+                ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" 
+                : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+          }`}>
+            {node.status === "pending_setup" && <Wrench size={10} />}
+            {node.status === "shipping" && <Truck size={10} className="animate-bounce" />}
+            {node.status === "delivered" && <Package size={10} />}
+            {node.status === "pending_setup" ? "Awaiting Setup" : node.status}
+          </span>
+        </div>
+
+        {node.status === "pending_setup" && (
+          <div className="mt-4 pt-4 border-t border-white/5 space-y-4 pl-2">
+            {setupMode === null && (
+              <>
+                <p className="text-xs text-gray-400 leading-relaxed mb-2">
+                  Select a deployment type for your new hardware below to add it to your active mining nodes.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => {
+                      handleSetupNode(node.id, {
+                        hosting_type: "remote",
+                        status: "activating",
+                        setup_configured: true,
+                        created_at: new Date().toISOString()
+                      });
+                    }}
+                    className="py-3 px-2.5 rounded-xl bg-white/5 hover:bg-[#00f2ff]/10 border border-white/10 hover:border-[#00f2ff]/30 text-left transition-all flex flex-col justify-between h-28 group/btn text-white"
+                  >
+                    <Cloud size={18} className="text-[#00f2ff]" />
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider block">Remote Hosting</span>
+                      <span className="text-[8px] font-bold text-gray-500 block leading-tight mt-1">Instant deploy. 15% surcharge.</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setSetupMode("shipping_input")}
+                    className="py-3 px-2.5 rounded-xl bg-white/5 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 text-left transition-all flex flex-col justify-between h-28 group/btn text-white"
+                  >
+                    <Truck size={18} className="text-emerald-400" />
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider block">Physical Ship</span>
+                      <span className="text-[8px] font-bold text-gray-500 block leading-tight mt-1">Delivered home. 100% yields.</span>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+
+            {setupMode === "shipping_input" && (
+              <form onSubmit={handleShipSubmit} className="space-y-3">
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Enter Delivery Address</p>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 123 Blockchain Ave, London"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white placeholder:text-gray-700 focus:outline-none focus:border-emerald-500/60"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSetupMode(null)}
+                    className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-wider hover:bg-white/10 text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2 rounded-lg bg-emerald-500 text-black text-[9px] font-black uppercase tracking-wider hover:bg-emerald-400"
+                  >
+                    Confirm & Ship
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+
+        {node.status === "shipping" && (
+          <div className="mt-4 pt-4 border-t border-white/5 space-y-3 pl-2">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              Transit Address: <span className="text-white font-mono">{node.shipping_address}</span>
+            </p>
+            
+            <div className="space-y-1">
+              <div className="flex justify-between text-[8px] font-black text-gray-500 uppercase tracking-widest">
+                <span>In Transit</span>
+                <span>{shippingProgress}%</span>
+              </div>
+              <div className="w-full bg-white/5 border border-white/10 rounded-full h-1.5 overflow-hidden">
+                <div 
+                  className="bg-amber-500 h-full transition-all duration-1000" 
+                  style={{ width: `${shippingProgress}%` }}
+                />
+              </div>
+            </div>
+            <p className="text-[8px] font-bold text-amber-500/80 uppercase tracking-widest italic animate-pulse">
+              Simulating fast carrier dispatch (30s transit time)...
+            </p>
+          </div>
+        )}
+
+        {node.status === "delivered" && (
+          <div className="mt-4 pt-4 border-t border-white/5 space-y-3 pl-2">
+            {setupMode === null && (
+              <>
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-bold leading-relaxed">
+                  <span className="block font-black uppercase mb-1">Package Delivered</span>
+                  Hardware has arrived at your address. Connect it to your account locally to begin mining at 100% efficiency.
+                </div>
+                <button
+                  onClick={() => setSetupMode("physical_verify")}
+                  className="w-full py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-black uppercase tracking-widest hover:bg-emerald-400 transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/10"
+                >
+                  <ShieldCheck size={14} /> Connect Device
+                </button>
+              </>
+            )}
+
+            {setupMode === "physical_verify" && (
+              <form onSubmit={handleKeySubmit} className="space-y-3">
+                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Enter Security Key</p>
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter Physical Key (e.g. AT-KEY-85)"
+                  value={physicalKey}
+                  onChange={(e) => setPhysicalKey(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-3 text-xs text-white placeholder:text-gray-700 focus:outline-none focus:border-emerald-500/60"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSetupMode(null)}
+                    className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-wider hover:bg-white/10 text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2 rounded-lg bg-emerald-500 text-black text-[9px] font-black uppercase tracking-wider hover:bg-emerald-400"
+                  >
+                    Verify & Link
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

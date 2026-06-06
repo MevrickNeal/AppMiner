@@ -67,6 +67,9 @@ export default function Login() {
 
     if (!hasDbConfig) {
       localStorage.setItem("appsminers_demo", "true");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("appsminers_auth_change"));
+      }
       setSuccessMsg(authMode === "signin" ? "Sandbox Session Initialized!" : "Sandbox Registration Successful!");
       setTimeout(() => {
         router.push("/dashboard");
@@ -86,6 +89,9 @@ export default function Login() {
         if (error) {
           setErrorMsg(error.message);
         } else {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("appsminers_auth_change"));
+          }
           router.push("/dashboard");
         }
       } else {
@@ -128,6 +134,9 @@ export default function Login() {
           setErrorMsg(error.message);
         } else {
           if (data.session) {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new Event("appsminers_auth_change"));
+            }
             setSuccessMsg(t("authSignUpSuccess"));
             setTimeout(() => router.push("/dashboard"), 1500);
           } else {

@@ -63,3 +63,9 @@ BEGIN
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5. Add columns to public.nodes for device setup options
+ALTER TABLE public.nodes ADD COLUMN IF NOT EXISTS hosting_type TEXT DEFAULT 'remote';
+ALTER TABLE public.nodes ADD COLUMN IF NOT EXISTS setup_configured BOOLEAN DEFAULT false;
+ALTER TABLE public.nodes ADD COLUMN IF NOT EXISTS shipping_address TEXT;
+ALTER TABLE public.nodes ADD COLUMN IF NOT EXISTS shipping_started_at TIMESTAMP WITH TIME ZONE;

@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
-import { Menu, X, Globe, ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu, X, Globe, ChevronDown, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { useTranslation, LANGUAGES, LanguageCode } from "@/context/LanguageContext";
+import { supabase } from "@/lib/supabase";
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -14,6 +15,85 @@ export default function Navbar() {
   const [mobileLangOpen, setMobileLangOpen] = useState(false);
   const pathname = usePathname();
   const { language, setLanguage, t, isRtl } = useTranslation();
+
+  const [user, setUser] = useState<{ email?: string; name?: string } | null>(null);
+
+  useEffect(() => {
+    async function checkSession() {
+      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+      if (isDemoMode) {
+        setUser({ email: "operator@appsminers.com", name: "OPERATOR" });
+        return;
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const email = session.user.email;
+          const name = email ? email.split("@")[0].toUpperCase() : "OPERATOR";
+          setUser({ email, name });
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.warn("Failed to get session in Navbar", err);
+      }
+    }
+
+    checkSession();
+
+    // Set up auth state change listener
+    let subscription: any = null;
+    try {
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (session?.user) {
+          const email = session.user.email;
+          const name = email ? email.split("@")[0].toUpperCase() : "OPERATOR";
+          setUser({ email, name });
+        } else {
+          // Check if demo is set
+          const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+          if (isDemoMode) {
+            setUser({ email: "operator@appsminers.com", name: "OPERATOR" });
+          } else {
+            setUser(null);
+          }
+        }
+      });
+      subscription = data?.subscription;
+    } catch (err) {
+      console.warn("Auth state change listener failed in Navbar", err);
+    }
+
+    // Listen to localStorage changes (for demo login/logout across pages)
+    const handleStorageChange = () => {
+      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
+      if (isDemoMode) {
+        setUser({ email: "operator@appsminers.com", name: "OPERATOR" });
+      } else {
+        // Double check session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            const email = session.user.email;
+            const name = email ? email.split("@")[0].toUpperCase() : "OPERATOR";
+            setUser({ email, name });
+          } else {
+            setUser(null);
+          }
+        });
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("appsminers_auth_change", handleStorageChange);
+
+    return () => {
+      if (subscription) subscription.unsubscribe();
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("appsminers_auth_change", handleStorageChange);
+    };
+  }, []);
+
 
   const handleHashClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     if (href.startsWith("/#") && pathname === "/") {
@@ -120,12 +200,29 @@ export default function Navbar() {
               </AnimatePresence>
             </div>
 
-            <Link
-              href="/login"
-              className="hidden md:flex px-6 py-3 bg-black text-white text-[11px] font-black uppercase tracking-widest rounded-full hover:bg-gray-800 hover:scale-105 active:scale-95 transition-all shadow-lg"
-            >
-              {t("navLogin")}
-            </Link>
+            {user ? (
+              <Link
+                href="/dashboard"
+                className="hidden md:flex px-6 py-3 bg-black text-white text-[11px] font-black uppercase tracking-widest rounded-full hover:bg-gray-800 hover:scale-105 active:scale-95 transition-all shadow-lg items-center gap-2"
+              >
+                <div className="relative w-4.5 h-4.5 rounded-full overflow-hidden bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <Image
+                    src="/Products/icon blue.png"
+                    alt={user.name || "User Avatar"}
+                    fill
+                    className="object-contain p-0.5"
+                  />
+                </div>
+                <span>{user.name}</span>
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="hidden md:flex px-6 py-3 bg-black text-white text-[11px] font-black uppercase tracking-widest rounded-full hover:bg-gray-800 hover:scale-105 active:scale-95 transition-all shadow-lg"
+              >
+                {t("navLogin")}
+              </Link>
+            )}
 
             <button
               onClick={() => setMobileOpen((v) => !v)}
@@ -221,13 +318,35 @@ export default function Navbar() {
               </AnimatePresence>
             </div>
 
-            <Link
-              href="/login"
-              onClick={() => setMobileOpen(false)}
-              className="mt-2 px-6 py-4 bg-black text-white text-[11px] font-black uppercase tracking-widest rounded-full text-center"
-            >
-              {t("navLogin")}
-            </Link>
+            {user ? (
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileOpen(false)}
+                className="mt-2 p-4 bg-black/5 border border-black/10 rounded-2xl flex items-center gap-4 transition-all text-left"
+              >
+                <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#00f2ff]/60 bg-[#0a0a0a] flex items-center justify-center flex-shrink-0">
+                  <Image
+                    src="/Products/icon blue.png"
+                    alt={user.name || "User Avatar"}
+                    fill
+                    className="object-contain p-1.5"
+                  />
+                </div>
+                <div className="leading-tight">
+                  <p className="text-xs font-black text-black tracking-wider uppercase">{user.name}</p>
+                  <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Operator Dashboard</p>
+                </div>
+                <ChevronRight size={16} className="text-gray-400 ms-auto animate-pulse" />
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setMobileOpen(false)}
+                className="mt-2 px-6 py-4 bg-black text-white text-[11px] font-black uppercase tracking-widest rounded-full text-center"
+              >
+                {t("navLogin")}
+              </Link>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

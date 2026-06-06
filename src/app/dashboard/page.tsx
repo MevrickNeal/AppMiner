@@ -325,6 +325,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"overview" | "mining" | "wallet" | "settings" | "admin" | "purchases" | "support" | "shop">("overview");
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState("");
+  const [userId, setUserId] = useState("");
   
   // Real-time live Bitcoin price state
   const [btcPrice, setBtcPrice] = useState(64250);
@@ -455,9 +456,9 @@ export default function Dashboard() {
             setNodesList(JSON.parse(localNodesStr));
           } else {
             const defaultNodes = [
-              { id: "demo-n1", productName: "AppsMiners Nano Premium", hashrate: "10 TH/s", power: "10 W", region: "Europe-West", status: "online", created_at: new Date(Date.now() - 3600000).toISOString() },
-              { id: "demo-n2", productName: "AppsMiners Pocket Pro", hashrate: "110.2 TH/s", power: "550 W", region: "US-East", status: "online", created_at: new Date(Date.now() - 3600000).toISOString() },
-              { id: "demo-n3", productName: "AppsMiners Mini Enterprise", hashrate: "220.5 TH/s", power: "1200 W", region: "Asia-Pacific", status: "online", created_at: new Date(Date.now() - 3600000).toISOString() }
+              { id: "demo-n1", productName: "AppsMiners Nano Premium", hashrate: "10 TH/s", power: "10 W", region: "Europe-West", status: "online", hosting_type: "physical", setup_configured: true, created_at: new Date(Date.now() - 3600000).toISOString() },
+              { id: "demo-n2", productName: "AppsMiners Pocket Pro", hashrate: "110.2 TH/s", power: "550 W", region: "US-East", status: "online", hosting_type: "remote", setup_configured: true, created_at: new Date(Date.now() - 3600000).toISOString() },
+              { id: "demo-n3", productName: "AppsMiners Mini Enterprise", hashrate: "220.5 TH/s", power: "1200 W", region: "Asia-Pacific", status: "online", hosting_type: "remote", setup_configured: true, created_at: new Date(Date.now() - 3600000).toISOString() }
             ];
             localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(defaultNodes));
             setNodesList(defaultNodes);
@@ -469,6 +470,7 @@ export default function Dashboard() {
 
         const { data: { session }, error } = await supabase.auth.getSession();
         if (session) {
+          setUserId(session.user.id);
           setUserEmail(session.user?.email || "operator@appsminers.com");
           
           // Fetch wallet balance from Supabase
@@ -499,6 +501,10 @@ export default function Dashboard() {
               power: n.power,
               region: n.region,
               status: n.status,
+              hosting_type: n.hosting_type || "remote",
+              setup_configured: n.setup_configured !== undefined && n.setup_configured !== null ? n.setup_configured : false,
+              shipping_address: n.shipping_address || null,
+              shipping_started_at: n.shipping_started_at || null,
               created_at: n.created_at
             }));
             setNodesList(mappedNodes);
@@ -544,6 +550,7 @@ export default function Dashboard() {
           if (!session) {
             router.push("/login");
           } else {
+            setUserId(session.user?.id || "");
             setUserEmail(session.user?.email || "operator@appsminers.com");
           }
         });
@@ -606,11 +613,38 @@ export default function Dashboard() {
                 const localUpdated = currentNodes.map((n: any) => n.id === node.id ? { ...n, status: "online" } : n);
                 localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(localUpdated));
               }
-            } else {
+            } else if (userId) {
               supabase
                 .from("nodes")
                 .update({ status: "online" })
                 .eq("id", node.id)
+                .eq("user_id", userId)
+                .then();
+            }
+            return updatedNode;
+          }
+        }
+
+        // Transition from shipping to delivered
+        if (node.status === "shipping" && node.shipping_started_at) {
+          const elapsed = Date.now() - new Date(node.shipping_started_at).getTime();
+          if (elapsed >= 30000) { // 30 seconds transit delay for simulation quick feedback
+            nodesChanged = true;
+            const updatedNode = { ...node, status: "delivered" };
+            
+            if (isDemoMode) {
+              const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
+              if (localNodesStr) {
+                const currentNodes = JSON.parse(localNodesStr);
+                const localUpdated = currentNodes.map((n: any) => n.id === node.id ? { ...n, status: "delivered" } : n);
+                localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(localUpdated));
+              }
+            } else if (userId) {
+              supabase
+                .from("nodes")
+                .update({ status: "delivered" })
+                .eq("id", node.id)
+                .eq("user_id", userId)
                 .then();
             }
             return updatedNode;
@@ -618,7 +652,10 @@ export default function Dashboard() {
         }
 
         if (node.status === "online" && systemActive) {
-          balanceDiff += getRate(node.productName) * 3 * multiplier;
+          const baseRate = getRate(node.productName);
+          // 15% maintenance and energy fee deduction for remote hosting
+          const nodeYield = node.hosting_type === "remote" ? baseRate * 0.85 : baseRate;
+          balanceDiff += nodeYield * multiplier;
         }
 
         return node;
@@ -633,30 +670,30 @@ export default function Dashboard() {
           const nextBal = prev + balanceDiff;
           localStorage.setItem("appsminers_usd_balance", nextBal.toFixed(2));
           
-          if (!isDemoMode && Date.now() - lastSyncTime >= 15000) {
+          if (!isDemoMode && Date.now() - lastSyncTime >= 15000 && userId) {
             lastSyncTime = Date.now();
-            supabase.auth.getSession().then(({ data: { session } }) => {
-              if (session) {
-                supabase
-                  .from("wallets")
-                  .update({ usd_balance: nextBal })
-                  .eq("user_id", session.user.id)
-                  .then();
-              }
-            });
+            supabase
+              .from("wallets")
+              .update({ usd_balance: nextBal })
+              .eq("user_id", userId)
+              .then();
           }
           return nextBal;
         });
       }
-    }, 3000);
+    }, 1000);
 
     return () => clearInterval(interval);
-  }, [nodesList, systemActive, ownedUpgrades, overclocked]);
+  }, [nodesList, systemActive, ownedUpgrades, overclocked, userId]);
 
   const handleSignOut = async () => {
     try {
       localStorage.removeItem("appsminers_demo");
+      setUserId("");
       await supabase.auth.signOut();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("appsminers_auth_change"));
+      }
     } catch (e) {}
     router.push("/");
   };
@@ -955,7 +992,11 @@ export default function Dashboard() {
                 <div className="glass-card p-6 border border-white/10 relative overflow-hidden group sm:col-span-2 lg:col-span-1">
                   <div className="absolute top-0 left-0 h-1 bg-emerald-500 w-full transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
                   <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{t("dashActiveClusters")}</p>
-                  <h3 className="text-3xl font-black text-white">{systemActive ? (isAdmin ? `${allNodes.length} / ${allNodes.length} Systems` : "5 / 5 Systems") : `0 / ${isAdmin ? allNodes.length : 5} Systems`}</h3>
+                  <h3 className="text-3xl font-black text-white">
+                    {systemActive 
+                      ? `${nodesList.filter(n => n.status === "online" || n.status === "activating" || n.status === "paused").length} / ${nodesList.length} Systems` 
+                      : `0 / ${nodesList.length} Systems`}
+                  </h3>
                   <div className="mt-4 flex items-center gap-2 text-xs text-emerald-400 font-bold">
                     <span>{systemActive ? l.allOperational : "Emergency Stop Active"}</span>
                   </div>

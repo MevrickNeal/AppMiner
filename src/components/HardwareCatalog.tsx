@@ -1218,7 +1218,10 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
                   hashrate: cleanHashrate,
                   power: cleanPower,
                   region: region.split(" (")[0],
-                  status: "activating",
+                  status: "pending_setup",
+                  hosting_type: "remote",
+                  setup_configured: false,
+                  shipping_address: null,
                   created_at: new Date().toISOString()
                 };
                 localStorage.setItem("appsminers_purchased_nodes", JSON.stringify([newNode, ...currentNodes]));
@@ -1271,7 +1274,9 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
                   hashrate: cleanHashrate,
                   power: cleanPower,
                   region: region.split(" (")[0],
-                  status: "activating" // Set to activating initially
+                  status: "pending_setup", // Set to pending_setup initially
+                  hosting_type: "remote",
+                  setup_configured: false
                 });
 
               if (nodeError) throw nodeError;
