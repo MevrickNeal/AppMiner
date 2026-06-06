@@ -1201,7 +1201,7 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
                 .insert({
                   user_id: session.user.id,
                   purchase_id: purchase.id,
-                  node_name: product.name + " Node",
+                  product_name: product.name + " Node",
                   hashrate: cleanHashrate,
                   power: cleanPower,
                   region: region.split(" (")[0],

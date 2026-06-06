@@ -379,7 +379,7 @@ export default function MiningDashboard() {
       if (data && !error) {
         const mappedNodes = data.map(n => ({
           id: n.id,
-          productName: n.node_name,
+          productName: n.product_name,
           hashrate: n.hashrate,
           power: n.power,
           region: n.region,
