@@ -13,6 +13,7 @@ import Image from "next/image";
 import { useTranslation } from "@/context/LanguageContext";
 import { CATALOG_I18N } from "@/locales/catalog";
 import { supabase } from "@/lib/supabase";
+import { safeSanityFetch } from "@/lib/sanity";
 
 // ─── Types ────────────────────────────────────────────────────
 type SpecGroup = { label: string; rows: { key: string; value: string; highlight?: boolean }[] };
@@ -642,8 +643,62 @@ export default function HardwareCatalog() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const { language, t, isRtl } = useTranslation();
   const code = language.code; // "EN" | "AR" | "HI" | "DE" | "FR" | "ES" | "BN"
+  const [fetchedProducts, setFetchedProducts] = useState<Product[]>(products);
 
-  const localizedProducts = products.map((product) => {
+  useEffect(() => {
+    async function loadSanityProducts() {
+      try {
+        const query = `*[_type == "product"]{
+          id,
+          name,
+          series,
+          type,
+          hashrate,
+          efficiency,
+          price,
+          "image": coalesce(image.asset->url, image, ""),
+          description,
+          bundleContents,
+          badge,
+          specGroups
+        }`;
+        const data = await safeSanityFetch<any[]>(query);
+        if (data && Array.isArray(data) && data.length > 0) {
+          const sanitized = data.map((item: any) => ({
+            id: String(item.id || item._id),
+            name: String(item.name || ""),
+            series: String(item.series || ""),
+            type: (item.type === "flagship" || item.type === "micro" || item.type === "bundle") ? item.type : "flagship",
+            hashrate: item.hashrate ? String(item.hashrate) : undefined,
+            efficiency: item.efficiency ? String(item.efficiency) : undefined,
+            price: String(item.price || ""),
+            image: String(item.image || "/Products/placeholder.png"),
+            description: String(item.description || ""),
+            bundleContents: Array.isArray(item.bundleContents) ? item.bundleContents.map(String) : undefined,
+            badge: item.badge ? String(item.badge) : undefined,
+            specGroups: Array.isArray(item.specGroups)
+              ? item.specGroups.map((group: any) => ({
+                  label: String(group.label || ""),
+                  rows: Array.isArray(group.rows)
+                    ? group.rows.map((row: any) => ({
+                        key: String(row.key || ""),
+                        value: String(row.value || ""),
+                        highlight: Boolean(row.highlight),
+                      }))
+                    : [],
+                }))
+              : [],
+          }));
+          setFetchedProducts(sanitized);
+        }
+      } catch (error) {
+        console.warn("Error loading products from Sanity CMS, falling back to local static catalog:", error);
+      }
+    }
+    loadSanityProducts();
+  }, []);
+
+  const localizedProducts = fetchedProducts.map((product) => {
     const locProductData = CATALOG_I18N[code]?.products?.[product.id] || CATALOG_I18N.EN.products[product.id] || {};
     
     // Localize specGroups
