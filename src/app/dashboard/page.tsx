@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -371,6 +371,7 @@ export default function Dashboard() {
   const [usdBalance, setUsdBalance] = useState(100.00);
   const [nodesList, setNodesList] = useState<any[]>([]);
   const [ownedUpgrades, setOwnedUpgrades] = useState<string[]>([]);
+  const [offlineEarningsAlert, setOfflineEarningsAlert] = useState<{ earnings: number; elapsedHours: number } | null>(null);
 
   const code = language.code;
   const l = DASH_LOCAL_I18N[code] || DASH_LOCAL_I18N.EN;
@@ -407,8 +408,10 @@ export default function Dashboard() {
         }
       }
       setOwnedUpgrades(upgrades);
+      return upgrades;
     } catch (err) {
       console.warn("Failed to load upgrades:", err);
+      return [];
     }
   };
 
@@ -418,7 +421,7 @@ export default function Dashboard() {
         const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
         setIsDemo(isDemoMode);
         
-        await reloadUpgrades();
+        const upgrades = await reloadUpgrades();
 
         // Initialize USD balance
         let balance = 100.00;
@@ -428,13 +431,11 @@ export default function Dashboard() {
         } else {
           localStorage.setItem("appsminers_usd_balance", "100.00");
         }
-        setUsdBalance(balance);
 
         if (isDemoMode) {
           setUserEmail("operator@appsminers.com");
           setIsAdmin(true);
           
-          // Rich mock node and profile data for zero-config local demo mode
           setAllProfiles([
             { id: "1", username: "Lian Mollick Nehal", is_admin: true, phone_number: "+880-170-000-0000", country: "Bangladesh" },
             { id: "2", username: "Alex Mercer", is_admin: false, phone_number: "+1-415-555-2671", country: "United States" },
@@ -450,20 +451,53 @@ export default function Dashboard() {
             { id: "5", name: "DeepVault-Node-3", status: "online", hashrate: 62.4 }
           ]);
           
-          // Load demo nodes list
           const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
+          let loadedNodes: any[] = [];
           if (localNodesStr) {
-            setNodesList(JSON.parse(localNodesStr));
+            loadedNodes = JSON.parse(localNodesStr);
           } else {
-            const defaultNodes = [
+            loadedNodes = [
               { id: "demo-n1", productName: "AppsMiners Nano Premium", hashrate: "10 TH/s", power: "10 W", region: "Europe-West", status: "online", hosting_type: "physical", setup_configured: true, created_at: new Date(Date.now() - 3600000).toISOString() },
               { id: "demo-n2", productName: "AppsMiners Pocket Pro", hashrate: "110.2 TH/s", power: "550 W", region: "US-East", status: "online", hosting_type: "remote", setup_configured: true, created_at: new Date(Date.now() - 3600000).toISOString() },
               { id: "demo-n3", productName: "AppsMiners Mini Enterprise", hashrate: "220.5 TH/s", power: "1200 W", region: "Asia-Pacific", status: "online", hosting_type: "remote", setup_configured: true, created_at: new Date(Date.now() - 3600000).toISOString() }
             ];
-            localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(defaultNodes));
-            setNodesList(defaultNodes);
+            localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(loadedNodes));
           }
 
+          // Compute offline earnings for demo mode
+          let lastSyncTime = Date.now();
+          const localLastSync = localStorage.getItem("appsminers_last_sync_time");
+          if (localLastSync) {
+            lastSyncTime = parseInt(localLastSync, 10);
+          } else {
+            localStorage.setItem("appsminers_last_sync_time", Date.now().toString());
+          }
+
+          const { earnings, updatedNodes, nodesChanged } = calculateOfflineEarnings(
+            lastSyncTime,
+            loadedNodes,
+            upgrades,
+            false,
+            true
+          );
+
+          let finalBalance = balance;
+          if (earnings > 0) {
+            finalBalance = balance + earnings;
+            localStorage.setItem("appsminers_usd_balance", finalBalance.toFixed(2));
+            const elapsedHours = (Date.now() - lastSyncTime) / 3600000;
+            setOfflineEarningsAlert({ earnings, elapsedHours });
+          }
+          setUsdBalance(finalBalance);
+
+          if (nodesChanged) {
+            setNodesList(updatedNodes);
+            localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(updatedNodes));
+          } else {
+            setNodesList(loadedNodes);
+          }
+
+          localStorage.setItem("appsminers_last_sync_time", Date.now().toString());
           setLoading(false);
           return;
         }
@@ -473,28 +507,30 @@ export default function Dashboard() {
           setUserId(session.user.id);
           setUserEmail(session.user?.email || "operator@appsminers.com");
           
-          // Fetch wallet balance from Supabase
           const { data: wallet } = await supabase
             .from("wallets")
-            .select("usd_balance")
+            .select("usd_balance, updated_at")
             .eq("user_id", session.user.id)
             .single();
 
+          let dbBalance = balance;
+          let lastSyncTime = Date.now();
           if (wallet && wallet.usd_balance !== null) {
-            balance = parseFloat(String(wallet.usd_balance));
-            localStorage.setItem("appsminers_usd_balance", balance.toFixed(2));
-            setUsdBalance(balance);
+            dbBalance = parseFloat(String(wallet.usd_balance));
+            if (wallet.updated_at) {
+              lastSyncTime = new Date(wallet.updated_at).getTime();
+            }
           }
 
-          // Fetch user's nodes list
           const { data: nodesData } = await supabase
             .from("nodes")
             .select("*")
             .eq("user_id", session.user.id)
             .order("created_at", { ascending: false });
 
+          let loadedNodes: any[] = [];
           if (nodesData) {
-            const mappedNodes = nodesData.map(n => ({
+            loadedNodes = nodesData.map(n => ({
               id: n.id,
               productName: n.product_name,
               hashrate: n.hashrate,
@@ -507,7 +543,45 @@ export default function Dashboard() {
               shipping_started_at: n.shipping_started_at || null,
               created_at: n.created_at
             }));
-            setNodesList(mappedNodes);
+          }
+
+          // Compute offline earnings for Supabase
+          const { earnings, updatedNodes, nodesChanged } = calculateOfflineEarnings(
+            lastSyncTime,
+            loadedNodes,
+            upgrades,
+            false,
+            true
+          );
+
+          let finalBalance = dbBalance;
+          if (earnings > 0) {
+            finalBalance = dbBalance + earnings;
+            localStorage.setItem("appsminers_usd_balance", finalBalance.toFixed(2));
+            const elapsedHours = (Date.now() - lastSyncTime) / 3600000;
+            setOfflineEarningsAlert({ earnings, elapsedHours });
+
+            // Sync balance back to DB immediately
+            await supabase
+              .from("wallets")
+              .update({ usd_balance: finalBalance, updated_at: new Date().toISOString() })
+              .eq("user_id", session.user.id);
+          } else {
+            setUsdBalance(dbBalance);
+            localStorage.setItem("appsminers_usd_balance", dbBalance.toFixed(2));
+          }
+
+          if (nodesChanged) {
+            setNodesList(updatedNodes);
+            for (const n of updatedNodes) {
+              await supabase
+                .from("nodes")
+                .update({ status: n.status })
+                .eq("id", n.id)
+                .eq("user_id", session.user.id);
+            }
+          } else {
+            setNodesList(loadedNodes);
           }
 
           // Check if admin
@@ -661,6 +735,10 @@ export default function Dashboard() {
         return node;
       });
 
+      if (isDemoMode) {
+        localStorage.setItem("appsminers_last_sync_time", Date.now().toString());
+      }
+
       if (nodesChanged) {
         setNodesList(updatedNodes);
       }
@@ -674,12 +752,21 @@ export default function Dashboard() {
             lastSyncTime = Date.now();
             supabase
               .from("wallets")
-              .update({ usd_balance: nextBal })
+              .update({ usd_balance: nextBal, updated_at: new Date().toISOString() })
               .eq("user_id", userId)
               .then();
           }
           return nextBal;
         });
+      } else {
+        if (!isDemoMode && Date.now() - lastSyncTime >= 15000 && userId) {
+          lastSyncTime = Date.now();
+          supabase
+            .from("wallets")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("user_id", userId)
+            .then();
+        }
       }
     }, 1000);
 
@@ -1333,6 +1420,126 @@ export default function Dashboard() {
           })}
         </div>
       </div>
+
+      {/* Offline Mining Modal */}
+      <AnimatePresence>
+        {offlineEarningsAlert && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md pointer-events-auto"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="glass-card max-w-md w-full p-6 text-center border-[#00f2ff]/20 relative overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,242,255,0.08)_0%,transparent_70%)]" />
+              <div className="w-16 h-16 rounded-full bg-[#00f2ff]/10 border border-[#00f2ff]/30 flex items-center justify-center mx-auto mb-4 text-[#00f2ff] animate-pulse">
+                <Activity size={28} />
+              </div>
+              <h3 className="text-xs font-black uppercase tracking-[0.25em] text-[#00f2ff] mb-2">Offline Mining Report</h3>
+              <h4 className="text-2xl font-black text-white mb-4">Welcome Back, Operator</h4>
+              <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+                While you were away for <span className="text-white font-bold">{offlineEarningsAlert.elapsedHours.toFixed(1)} hours</span>, your virtual hardware nodes remained online and active.
+              </p>
+              <div className="p-4 rounded-xl bg-white/5 border border-white/10 mb-6">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-1">Estimated Earnings Mined</span>
+                <span className="text-3xl font-black text-emerald-400">+${offlineEarningsAlert.earnings.toFixed(4)} USD</span>
+              </div>
+              <button
+                onClick={() => setOfflineEarningsAlert(null)}
+                className="w-full py-3 bg-[#00f2ff] hover:bg-[#00e1ec] text-black font-black uppercase tracking-widest text-xs rounded-xl transition-all hover:scale-[1.02]"
+              >
+                Collect Earnings
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
+}
+
+function calculateOfflineEarnings(
+  lastSyncTime: number,
+  nodes: any[],
+  upgrades: string[],
+  overclocked: boolean,
+  systemActive: boolean
+): { earnings: number; updatedNodes: any[]; nodesChanged: boolean } {
+  if (!systemActive) {
+    return { earnings: 0, updatedNodes: nodes, nodesChanged: false };
+  }
+
+  const now = Date.now();
+  const elapsedMs = now - lastSyncTime;
+  if (elapsedMs <= 0) {
+    return { earnings: 0, updatedNodes: nodes, nodesChanged: false };
+  }
+
+  let multiplier = 1.0;
+  if (upgrades.includes("overclock-license")) {
+    multiplier += 0.10;
+  }
+  if (upgrades.includes("cooling-booster")) {
+    multiplier += 0.15;
+  }
+  if (overclocked) {
+    multiplier += 0.15;
+  }
+
+  const getRate = (name: string): number => {
+    const lower = name.toLowerCase();
+    if (lower.includes("t200")) return 0.05;
+    if (lower.includes("f100")) return 0.025;
+    if (lower.includes("f50")) return 0.0125;
+    if (lower.includes("starter")) return 0.006;
+    if (lower.includes("mini")) return 0.002;
+    if (lower.includes("nano")) return 0.0006;
+    if (lower.includes("pocket")) return 0.0002;
+    return 0.001;
+  };
+
+  let totalEarnings = 0;
+  let nodesChanged = false;
+
+  const updatedNodes = nodes.map(node => {
+    let status = node.status;
+    let nodeCreatedAt = node.created_at ? new Date(node.created_at).getTime() : lastSyncTime;
+    let nodeShippingStartedAt = node.shipping_started_at ? new Date(node.shipping_started_at).getTime() : lastSyncTime;
+
+    if (status === "activating") {
+      const activationTime = nodeCreatedAt + 120000;
+      if (now >= activationTime) {
+        status = "online";
+        nodesChanged = true;
+        const miningStart = Math.max(lastSyncTime, activationTime);
+        const miningDurationSec = Math.max(0, (now - miningStart) / 1000);
+        const baseRate = getRate(node.productName);
+        const nodeYield = node.hosting_type === "remote" ? baseRate * 0.85 : baseRate;
+        totalEarnings += nodeYield * multiplier * miningDurationSec;
+      }
+    } else if (status === "shipping") {
+      const deliveryTime = nodeShippingStartedAt + 30000;
+      if (now >= deliveryTime) {
+        status = "delivered";
+        nodesChanged = true;
+      }
+    } else if (status === "online") {
+      const miningStart = lastSyncTime;
+      const miningDurationSec = Math.max(0, (now - miningStart) / 1000);
+      const baseRate = getRate(node.productName);
+      const nodeYield = node.hosting_type === "remote" ? baseRate * 0.85 : baseRate;
+      totalEarnings += nodeYield * multiplier * miningDurationSec;
+    }
+    if (status !== node.status) {
+      return { ...node, status };
+    }
+    return node;
+  });
+
+  return { earnings: totalEarnings, updatedNodes, nodesChanged };
 }
