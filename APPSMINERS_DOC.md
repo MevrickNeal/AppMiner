@@ -41,54 +41,96 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_aqBFXh6dM8qNnJp2xg0bLA_bV3Bgvjv
 The database runs on PostgreSQL. Below is the breakdown of the core tables, RLS policies, and Postgres automated routines.
 
 ### Tables
-1. **`public.profiles`**: Connects users to metadata.
-2. **`public.purchases`**: Manages orders, tracking if an ASIC is pre-ordered (`is_preorder: boolean`).
-3. **`public.nodes`**: Tracks telemetry for active ASICs, including hashrate, temperatures, and status (e.g. `overclocked`, `online`, `offline`).
-4. **`public.wallets`**: Tracks user funds across `hot_balance` and `cold_balance` vaults.
+1. **`public.profiles`**: Extends `auth.users` to save detailed operator records (name, dob, pins, keys).
+2. **`public.purchases`**: Manages orders, tracking if an ASIC is pre-ordered (`is_preorder: boolean`) and purchase transaction status.
+3. **`public.nodes`**: Tracks telemetry for active ASICs, including hashrate, power draw, hosting type (remote/physical), setup status, and transit.
+4. **`public.wallets`**: Tracks user funds across virtual balance ($100.00 starting credit) and mock hot/cold vaults.
 
 ```sql
 -- Profiles Table
 CREATE TABLE public.profiles (
-  id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
-  full_name TEXT,
-  phone TEXT,
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  is_admin BOOLEAN DEFAULT false,
+  language_preference TEXT DEFAULT 'EN',
+  username TEXT,
+  reference_code TEXT,
+  first_name TEXT,
+  last_name TEXT,
   country TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  phone_number TEXT,
+  date_of_birth DATE,
+  transaction_pin TEXT,
+  security_key TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- Wallets Table
 CREATE TABLE public.wallets (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL UNIQUE,
-  hot_balance NUMERIC(20, 8) DEFAULT 0.00000000,
-  cold_balance NUMERIC(20, 8) DEFAULT 0.00000000,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  hot_wallet_balance NUMERIC DEFAULT 0.00000000,
+  cold_vault_balance NUMERIC DEFAULT 0.00000000,
+  total_withdrawn NUMERIC DEFAULT 0.00000000,
+  usd_balance NUMERIC DEFAULT 100.00,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- Purchases Table
 CREATE TABLE public.purchases (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  product_id TEXT NOT NULL,
   product_name TEXT NOT NULL,
-  series TEXT,
-  price NUMERIC(12, 2) NOT NULL,
-  quantity INTEGER DEFAULT 1,
-  is_preorder BOOLEAN DEFAULT FALSE,
-  status TEXT DEFAULT 'Processing',
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  price_paid NUMERIC NOT NULL,
+  is_preorder BOOLEAN DEFAULT false,
+  status TEXT DEFAULT 'completed',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Nodes Table (Telemetry)
+-- Nodes Table (Telemetry & Deployment Setup)
 CREATE TABLE public.nodes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
-  purchase_id UUID REFERENCES public.purchases ON DELETE CASCADE,
-  device_name TEXT NOT NULL,
-  hashrate NUMERIC(10, 2) DEFAULT 0.00,
-  temp_c NUMERIC(5, 2) DEFAULT 0.00,
-  status TEXT DEFAULT 'Initializing',
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  purchase_id UUID REFERENCES public.purchases(id) ON DELETE CASCADE NOT NULL,
+  product_name TEXT NOT NULL,
+  status TEXT DEFAULT 'Online',
+  hashrate TEXT NOT NULL,
+  power TEXT NOT NULL,
+  region TEXT NOT NULL,
+  hosting_type TEXT DEFAULT 'remote',
+  setup_configured BOOLEAN DEFAULT false,
+  shipping_address TEXT,
+  shipping_started_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+```
+
+### Row Level Security (RLS) & Recursion Bypass
+To prevent stack overflows when evaluating permissions, admin status queries are decoupled using a `SECURITY DEFINER` function which bypasses RLS on subqueries:
+
+```sql
+-- Security Definer helper function
+CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN COALESCE(
+    (SELECT is_admin FROM public.profiles WHERE id = user_id),
+    false
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- RLS Policies
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (public.is_admin(auth.uid()));
+
+ALTER TABLE public.nodes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own nodes" ON public.nodes FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own nodes" ON public.nodes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own nodes" ON public.nodes FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can view all nodes" ON public.nodes FOR SELECT USING (public.is_admin(auth.uid()));
 ```
 
 ### Automation Triggers (Stored Procedures)
@@ -97,26 +139,35 @@ To guarantee data consistency, triggers handle profile instantiation and wallet 
 ```sql
 -- Trigger: Handle new user profile creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, phone, country)
+  INSERT INTO public.profiles (
+    id, is_admin, username, reference_code, first_name,
+    last_name, country, phone_number, date_of_birth, transaction_pin, security_key
+  )
   VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
-    COALESCE(NEW.raw_user_meta_data->>'phone', ''),
-    COALESCE(NEW.raw_user_meta_data->>'country', '')
+    new.id, false,
+    new.raw_user_meta_data->>'username',
+    new.raw_user_meta_data->>'reference_code',
+    new.raw_user_meta_data->>'first_name',
+    new.raw_user_meta_data->>'last_name',
+    new.raw_user_meta_data->>'country',
+    new.raw_user_meta_data->>'phone_number',
+    NULLIF(new.raw_user_meta_data->>'date_of_birth', '')::DATE,
+    new.raw_user_meta_data->>'transaction_pin',
+    new.raw_user_meta_data->>'security_key'
   );
-  RETURN NEW;
+  RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger: Handle wallet initialization
+-- Trigger: Handle wallet initialization with $100 starting credit
 CREATE OR REPLACE FUNCTION public.handle_new_wallet()
-RETURNS TRIGGER AS $$
+RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.wallets (user_id, hot_balance, cold_balance)
-  VALUES (NEW.id, 0.0, 0.0);
-  RETURN NEW;
+  INSERT INTO public.wallets (user_id, hot_wallet_balance, cold_vault_balance, usd_balance)
+  VALUES (new.id, 0.00000000, 0.00000000, 100.00);
+  RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
@@ -244,6 +295,27 @@ The system is built on **Zero-Trust Client Access**:
   CREATE POLICY "Users can only read own data" ON public.table_name
     FOR SELECT TO authenticated USING (auth.uid() = user_id);
   ```
+
+---
+
+## 8. ATtiny85 / Digispark Hardware Authentication Key
+
+AppsMiners supports physical cold vault verification using a low-cost ATtiny85-based **Digispark USB development key** to simulate an authentication token.
+
+### How it Works (Simulation Flow)
+1. **USB Keyboard (HID) Emulation**: When plugged into the host computer, the Digispark identifies itself as a standard keyboard.
+2. **On-Board Signature Typing**: It waits 2 seconds for OS drivers to initialize, blinks its onboard LEDs twice, and then dynamically types the hardcoded cryptographic hardware signature:
+   `AppsMiners-ATTINY85-ColdWallet-KEY-7f8a9c2b4d6e`
+3. **Automatic Submit**: It sends an `Enter` keystroke to immediately submit the signature to the text box on the Operator Dashboard to unlock access to cold storage.
+
+### Flashing Instructions (Arduino IDE)
+The source code is located in the root file [`digispark_wallet.ino`](file:///C:/Users/Lian%20Mollick/Desktop/AppMiner/digispark_wallet.ino).
+1. Open the Arduino IDE.
+2. Go to **File -> Preferences -> Additional Boards Manager URLs** and add:
+   `http://drazzy.com/package_drazzy.com_index.json`
+3. Go to **Tools -> Board -> Board Manager** and search/install **"Digistump AVR Boards"**.
+4. Set **Tools -> Board** to **"Digispark (Default - 16.5mhz)"**.
+5. Click **Upload** to compile. When prompted by the output console, plug the Digispark into your USB port to flash.
 
 ---
 
