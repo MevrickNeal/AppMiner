@@ -88,34 +88,10 @@ function calculateOfflineEarnings(
 
 export async function syncMiningEarnings(
   token: string | null,
-  isDemoMode: boolean,
-  clientLastSyncTime: number,
-  clientNodes: any[],
-  clientUpgrades: string[],
   overclocked: boolean,
   systemActive: boolean
 ) {
   try {
-    if (isDemoMode) {
-      const { earnings, updatedNodes, nodesChanged } = calculateOfflineEarnings(
-        clientLastSyncTime,
-        clientNodes,
-        clientUpgrades,
-        overclocked,
-        systemActive
-      );
-      const elapsedHours = (Date.now() - clientLastSyncTime) / 3600000;
-      
-      return {
-        success: true,
-        earnings,
-        elapsedHours,
-        updatedNodes,
-        nodesChanged,
-        newBalance: null
-      };
-    }
-
     if (!token) {
       return { success: false, error: "Authentication token required." };
     }

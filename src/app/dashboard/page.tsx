@@ -465,38 +465,8 @@ export default function Dashboard() {
             localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(loadedNodes));
           }
 
-          const localLastSync = localStorage.getItem("appsminers_last_sync_time");
-          const clientLastSyncTime = localLastSync ? parseInt(localLastSync, 10) : Date.now();
-
-          // Call server action for demo mode calculation
-          const res = await syncMiningEarnings(
-            null,
-            true,
-            clientLastSyncTime,
-            loadedNodes,
-            upgrades,
-            false,
-            true
-          );
-
-          let finalBalance = balance;
-          if (res && res.success && typeof res.earnings === "number" && typeof res.elapsedHours === "number") {
-            if (res.earnings > 0) {
-              finalBalance = balance + res.earnings;
-              localStorage.setItem("appsminers_usd_balance", finalBalance.toFixed(2));
-              setOfflineEarningsAlert({ earnings: res.earnings, elapsedHours: res.elapsedHours });
-            }
-            if (res.nodesChanged) {
-              setNodesList(res.updatedNodes);
-              localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(res.updatedNodes));
-            } else {
-              setNodesList(loadedNodes);
-            }
-          } else {
-            setNodesList(loadedNodes);
-          }
-          setUsdBalance(finalBalance);
-          localStorage.setItem("appsminers_last_sync_time", Date.now().toString());
+          setNodesList(loadedNodes);
+          setUsdBalance(balance);
           setLoading(false);
           return;
         }
@@ -509,12 +479,8 @@ export default function Dashboard() {
           const token = session.access_token;
           const res = await syncMiningEarnings(
             token,
-            false,
-            Date.now(),
-            [],
-            [],
-            false,
-            true
+            overclocked,
+            systemActive
           );
 
           if (res && res.success && typeof res.newBalance === "number" && typeof res.earnings === "number" && typeof res.elapsedHours === "number") {
