@@ -427,7 +427,7 @@ export default function Dashboard() {
           );
 
           if (res && res.success && typeof res.newBalance === "number" && typeof res.earnings === "number" && typeof res.elapsedHours === "number") {
-            if (res.earnings > 0) {
+            if (res.earnings > 0.0001 && res.elapsedHours >= 0.0083) { // Offline for >= 30 seconds
               setOfflineEarningsAlert({ earnings: res.earnings, elapsedHours: res.elapsedHours });
             }
             setUsdBalance(res.newBalance);
@@ -449,7 +449,7 @@ export default function Dashboard() {
 
             if (wallet && wallet.hot_wallet_balance !== null) {
               let dbBal = parseFloat(String(wallet.hot_wallet_balance));
-              if (dbBal === 0 && (!nodesData || nodesData.length === 0)) {
+              if (dbBal === 0 && (!nodesData || nodesData.length === 0) && upgrades.length === 0) {
                 dbBal = 100.00;
               }
               setUsdBalance(dbBal);
@@ -534,14 +534,14 @@ export default function Dashboard() {
     const interval = setInterval(async () => {
       const getRate = (name: string): number => {
         const lower = name.toLowerCase();
-        if (lower.includes("t200")) return 0.05;
-        if (lower.includes("f100")) return 0.025;
-        if (lower.includes("f50")) return 0.0125;
-        if (lower.includes("starter")) return 0.006;
-        if (lower.includes("mini")) return 0.002;
-        if (lower.includes("nano")) return 0.0006;
-        if (lower.includes("pocket")) return 0.0002;
-        return 0.001;
+        if (lower.includes("t200")) return 0.0005;
+        if (lower.includes("f100")) return 0.00025;
+        if (lower.includes("f50")) return 0.000125;
+        if (lower.includes("starter")) return 0.00006;
+        if (lower.includes("mini")) return 0.00002;
+        if (lower.includes("nano")) return 0.000006;
+        if (lower.includes("pocket")) return 0.000002;
+        return 0.00001;
       };
 
       let balanceDiff = 0;
@@ -559,7 +559,8 @@ export default function Dashboard() {
       }
       
       const updatedNodes = nodesList.map(node => {
-        if (node.status === "activating" && node.created_at) {
+        const normStatus = node.status ? node.status.toLowerCase() : "";
+        if (normStatus === "activating" && node.created_at) {
           const elapsed = Date.now() - new Date(node.created_at).getTime();
           if (elapsed >= 120000) { // 2 minutes activation delay
             nodesChanged = true;
@@ -578,7 +579,7 @@ export default function Dashboard() {
         }
 
         // Transition from shipping to delivered
-        if (node.status === "shipping" && node.shipping_started_at) {
+        if (normStatus === "shipping" && node.shipping_started_at) {
           const elapsed = Date.now() - new Date(node.shipping_started_at).getTime();
           if (elapsed >= 30000) { // 30 seconds transit delay for simulation quick feedback
             nodesChanged = true;
@@ -596,7 +597,7 @@ export default function Dashboard() {
           }
         }
 
-        if (node.status === "online" && systemActive) {
+        if (normStatus === "online" && systemActive) {
           const baseRate = getRate(node.productName);
           // 15% maintenance and energy fee deduction for remote hosting
           const nodeYield = node.hosting_type === "remote" ? baseRate * 0.85 : baseRate;

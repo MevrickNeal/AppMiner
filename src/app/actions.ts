@@ -35,14 +35,14 @@ function calculateOfflineEarnings(
 
   const getRate = (name: string): number => {
     const lower = name.toLowerCase();
-    if (lower.includes("t200")) return 0.05;
-    if (lower.includes("f100")) return 0.025;
-    if (lower.includes("f50")) return 0.0125;
-    if (lower.includes("starter")) return 0.006;
-    if (lower.includes("mini")) return 0.002;
-    if (lower.includes("nano")) return 0.0006;
-    if (lower.includes("pocket")) return 0.0002;
-    return 0.001;
+    if (lower.includes("t200")) return 0.0005;
+    if (lower.includes("f100")) return 0.00025;
+    if (lower.includes("f50")) return 0.000125;
+    if (lower.includes("starter")) return 0.00006;
+    if (lower.includes("mini")) return 0.00002;
+    if (lower.includes("nano")) return 0.000006;
+    if (lower.includes("pocket")) return 0.000002;
+    return 0.00001;
   };
 
   let totalEarnings = 0;
@@ -50,10 +50,11 @@ function calculateOfflineEarnings(
 
   const updatedNodes = nodes.map(node => {
     let status = node.status;
+    const normStatus = status ? status.toLowerCase() : "";
     let nodeCreatedAt = node.created_at ? new Date(node.created_at).getTime() : lastSyncTime;
     let nodeShippingStartedAt = node.shipping_started_at ? new Date(node.shipping_started_at).getTime() : lastSyncTime;
 
-    if (status === "activating") {
+    if (normStatus === "activating") {
       const activationTime = nodeCreatedAt + 120000;
       if (now >= activationTime) {
         status = "online";
@@ -64,13 +65,13 @@ function calculateOfflineEarnings(
         const nodeYield = node.hosting_type === "remote" ? baseRate * 0.85 : baseRate;
         totalEarnings += nodeYield * multiplier * miningDurationSec;
       }
-    } else if (status === "shipping") {
+    } else if (normStatus === "shipping") {
       const deliveryTime = nodeShippingStartedAt + 30000;
       if (now >= deliveryTime) {
         status = "delivered";
         nodesChanged = true;
       }
-    } else if (status === "online") {
+    } else if (normStatus === "online") {
       const miningStart = lastSyncTime;
       const miningDurationSec = Math.max(0, (now - miningStart) / 1000);
       const baseRate = getRate(node.productName);
