@@ -96,7 +96,13 @@ export async function syncMiningEarnings(
       return { success: false, error: "Authentication token required." };
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    });
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
       return { success: false, error: "Unauthorized access token." };
