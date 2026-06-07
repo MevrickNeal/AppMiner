@@ -18,6 +18,7 @@ import SupportView from "@/components/dashboard/SupportView";
 import ShopView from "@/components/dashboard/ShopView";
 import { useTranslation } from "@/context/LanguageContext";
 import { supabase } from "@/lib/supabase";
+import { syncMiningEarnings } from "@/app/actions";
 
 
 const DASH_LOCAL_I18N: Record<string, Record<string, string>> = {
@@ -464,17 +465,14 @@ export default function Dashboard() {
             localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(loadedNodes));
           }
 
-          // Compute offline earnings for demo mode
-          let lastSyncTime = Date.now();
           const localLastSync = localStorage.getItem("appsminers_last_sync_time");
-          if (localLastSync) {
-            lastSyncTime = parseInt(localLastSync, 10);
-          } else {
-            localStorage.setItem("appsminers_last_sync_time", Date.now().toString());
-          }
+          const clientLastSyncTime = localLastSync ? parseInt(localLastSync, 10) : Date.now();
 
-          const { earnings, updatedNodes, nodesChanged } = calculateOfflineEarnings(
-            lastSyncTime,
+          // Call server action for demo mode calculation
+          const res = await syncMiningEarnings(
+            null,
+            true,
+            clientLastSyncTime,
             loadedNodes,
             upgrades,
             false,
@@ -482,21 +480,22 @@ export default function Dashboard() {
           );
 
           let finalBalance = balance;
-          if (earnings > 0) {
-            finalBalance = balance + earnings;
-            localStorage.setItem("appsminers_usd_balance", finalBalance.toFixed(2));
-            const elapsedHours = (Date.now() - lastSyncTime) / 3600000;
-            setOfflineEarningsAlert({ earnings, elapsedHours });
-          }
-          setUsdBalance(finalBalance);
-
-          if (nodesChanged) {
-            setNodesList(updatedNodes);
-            localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(updatedNodes));
+          if (res && res.success && typeof res.earnings === "number" && typeof res.elapsedHours === "number") {
+            if (res.earnings > 0) {
+              finalBalance = balance + res.earnings;
+              localStorage.setItem("appsminers_usd_balance", finalBalance.toFixed(2));
+              setOfflineEarningsAlert({ earnings: res.earnings, elapsedHours: res.elapsedHours });
+            }
+            if (res.nodesChanged) {
+              setNodesList(res.updatedNodes);
+              localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(res.updatedNodes));
+            } else {
+              setNodesList(loadedNodes);
+            }
           } else {
             setNodesList(loadedNodes);
           }
-
+          setUsdBalance(finalBalance);
           localStorage.setItem("appsminers_last_sync_time", Date.now().toString());
           setLoading(false);
           return;
@@ -506,82 +505,61 @@ export default function Dashboard() {
         if (session) {
           setUserId(session.user.id);
           setUserEmail(session.user?.email || "operator@appsminers.com");
-          
-          const { data: wallet } = await supabase
-            .from("wallets")
-            .select("usd_balance, updated_at")
-            .eq("user_id", session.user.id)
-            .single();
 
-          let dbBalance = balance;
-          let lastSyncTime = Date.now();
-          if (wallet && wallet.usd_balance !== null) {
-            dbBalance = parseFloat(String(wallet.usd_balance));
-            if (wallet.updated_at) {
-              lastSyncTime = new Date(wallet.updated_at).getTime();
-            }
-          }
-
-          const { data: nodesData } = await supabase
-            .from("nodes")
-            .select("*")
-            .eq("user_id", session.user.id)
-            .order("created_at", { ascending: false });
-
-          let loadedNodes: any[] = [];
-          if (nodesData) {
-            loadedNodes = nodesData.map(n => ({
-              id: n.id,
-              productName: n.product_name,
-              hashrate: n.hashrate,
-              power: n.power,
-              region: n.region,
-              status: n.status,
-              hosting_type: n.hosting_type || "remote",
-              setup_configured: n.setup_configured !== undefined && n.setup_configured !== null ? n.setup_configured : false,
-              shipping_address: n.shipping_address || null,
-              shipping_started_at: n.shipping_started_at || null,
-              created_at: n.created_at
-            }));
-          }
-
-          // Compute offline earnings for Supabase
-          const { earnings, updatedNodes, nodesChanged } = calculateOfflineEarnings(
-            lastSyncTime,
-            loadedNodes,
-            upgrades,
+          const token = session.access_token;
+          const res = await syncMiningEarnings(
+            token,
+            false,
+            Date.now(),
+            [],
+            [],
             false,
             true
           );
 
-          let finalBalance = dbBalance;
-          if (earnings > 0) {
-            finalBalance = dbBalance + earnings;
-            localStorage.setItem("appsminers_usd_balance", finalBalance.toFixed(2));
-            const elapsedHours = (Date.now() - lastSyncTime) / 3600000;
-            setOfflineEarningsAlert({ earnings, elapsedHours });
-
-            // Sync balance back to DB immediately
-            await supabase
-              .from("wallets")
-              .update({ usd_balance: finalBalance, updated_at: new Date().toISOString() })
-              .eq("user_id", session.user.id);
-          } else {
-            setUsdBalance(dbBalance);
-            localStorage.setItem("appsminers_usd_balance", dbBalance.toFixed(2));
-          }
-
-          if (nodesChanged) {
-            setNodesList(updatedNodes);
-            for (const n of updatedNodes) {
-              await supabase
-                .from("nodes")
-                .update({ status: n.status })
-                .eq("id", n.id)
-                .eq("user_id", session.user.id);
+          if (res && res.success && typeof res.newBalance === "number" && typeof res.earnings === "number" && typeof res.elapsedHours === "number") {
+            if (res.earnings > 0) {
+              setOfflineEarningsAlert({ earnings: res.earnings, elapsedHours: res.elapsedHours });
             }
+            setUsdBalance(res.newBalance);
+            localStorage.setItem("appsminers_usd_balance", res.newBalance.toFixed(2));
+            setNodesList(res.updatedNodes);
           } else {
-            setNodesList(loadedNodes);
+            console.warn("Server action offline earnings sync failed, using client-side fallback:", res?.error);
+            const { data: wallet } = await supabase
+              .from("wallets")
+              .select("usd_balance")
+              .eq("user_id", session.user.id)
+              .single();
+
+            if (wallet && wallet.usd_balance !== null) {
+              const dbBal = parseFloat(String(wallet.usd_balance));
+              setUsdBalance(dbBal);
+              localStorage.setItem("appsminers_usd_balance", dbBal.toFixed(2));
+            }
+
+            const { data: nodesData } = await supabase
+              .from("nodes")
+              .select("*")
+              .eq("user_id", session.user.id)
+              .order("created_at", { ascending: false });
+
+            if (nodesData) {
+              const mapped = nodesData.map(n => ({
+                id: n.id,
+                productName: n.product_name,
+                hashrate: n.hashrate,
+                power: n.power,
+                region: n.region,
+                status: n.status,
+                hosting_type: n.hosting_type || "remote",
+                setup_configured: n.setup_configured !== undefined && n.setup_configured !== null ? n.setup_configured : false,
+                shipping_address: n.shipping_address || null,
+                shipping_started_at: n.shipping_started_at || null,
+                created_at: n.created_at
+              }));
+              setNodesList(mapped);
+            }
           }
 
           // Check if admin
@@ -1463,83 +1441,4 @@ export default function Dashboard() {
   );
 }
 
-function calculateOfflineEarnings(
-  lastSyncTime: number,
-  nodes: any[],
-  upgrades: string[],
-  overclocked: boolean,
-  systemActive: boolean
-): { earnings: number; updatedNodes: any[]; nodesChanged: boolean } {
-  if (!systemActive) {
-    return { earnings: 0, updatedNodes: nodes, nodesChanged: false };
-  }
 
-  const now = Date.now();
-  const elapsedMs = now - lastSyncTime;
-  if (elapsedMs <= 0) {
-    return { earnings: 0, updatedNodes: nodes, nodesChanged: false };
-  }
-
-  let multiplier = 1.0;
-  if (upgrades.includes("overclock-license")) {
-    multiplier += 0.10;
-  }
-  if (upgrades.includes("cooling-booster")) {
-    multiplier += 0.15;
-  }
-  if (overclocked) {
-    multiplier += 0.15;
-  }
-
-  const getRate = (name: string): number => {
-    const lower = name.toLowerCase();
-    if (lower.includes("t200")) return 0.05;
-    if (lower.includes("f100")) return 0.025;
-    if (lower.includes("f50")) return 0.0125;
-    if (lower.includes("starter")) return 0.006;
-    if (lower.includes("mini")) return 0.002;
-    if (lower.includes("nano")) return 0.0006;
-    if (lower.includes("pocket")) return 0.0002;
-    return 0.001;
-  };
-
-  let totalEarnings = 0;
-  let nodesChanged = false;
-
-  const updatedNodes = nodes.map(node => {
-    let status = node.status;
-    let nodeCreatedAt = node.created_at ? new Date(node.created_at).getTime() : lastSyncTime;
-    let nodeShippingStartedAt = node.shipping_started_at ? new Date(node.shipping_started_at).getTime() : lastSyncTime;
-
-    if (status === "activating") {
-      const activationTime = nodeCreatedAt + 120000;
-      if (now >= activationTime) {
-        status = "online";
-        nodesChanged = true;
-        const miningStart = Math.max(lastSyncTime, activationTime);
-        const miningDurationSec = Math.max(0, (now - miningStart) / 1000);
-        const baseRate = getRate(node.productName);
-        const nodeYield = node.hosting_type === "remote" ? baseRate * 0.85 : baseRate;
-        totalEarnings += nodeYield * multiplier * miningDurationSec;
-      }
-    } else if (status === "shipping") {
-      const deliveryTime = nodeShippingStartedAt + 30000;
-      if (now >= deliveryTime) {
-        status = "delivered";
-        nodesChanged = true;
-      }
-    } else if (status === "online") {
-      const miningStart = lastSyncTime;
-      const miningDurationSec = Math.max(0, (now - miningStart) / 1000);
-      const baseRate = getRate(node.productName);
-      const nodeYield = node.hosting_type === "remote" ? baseRate * 0.85 : baseRate;
-      totalEarnings += nodeYield * multiplier * miningDurationSec;
-    }
-    if (status !== node.status) {
-      return { ...node, status };
-    }
-    return node;
-  });
-
-  return { earnings: totalEarnings, updatedNodes, nodesChanged };
-}
