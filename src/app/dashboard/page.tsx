@@ -388,24 +388,15 @@ export default function Dashboard() {
 
   const reloadUpgrades = async () => {
     try {
-      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
       let upgrades: string[] = [];
-      if (isDemoMode) {
-        const localPurchasesStr = localStorage.getItem("appsminers_purchased_history");
-        if (localPurchasesStr) {
-          const list = JSON.parse(localPurchasesStr);
-          upgrades = list.map((p: any) => p.product_id);
-        }
-      } else {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { data } = await supabase
-            .from("purchases")
-            .select("product_id")
-            .eq("user_id", session.user.id);
-          if (data) {
-            upgrades = data.map((p: any) => p.product_id);
-          }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase
+          .from("purchases")
+          .select("product_id")
+          .eq("user_id", session.user.id);
+        if (data) {
+          upgrades = data.map((p: any) => p.product_id);
         }
       }
       setOwnedUpgrades(upgrades);
@@ -419,57 +410,9 @@ export default function Dashboard() {
   useEffect(() => {
     async function checkUser() {
       try {
-        const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
-        setIsDemo(isDemoMode);
+        setIsDemo(false);
         
         const upgrades = await reloadUpgrades();
-
-        // Initialize USD balance
-        let balance = 100.00;
-        const localBal = localStorage.getItem("appsminers_usd_balance");
-        if (localBal !== null) {
-          balance = parseFloat(localBal);
-        } else {
-          localStorage.setItem("appsminers_usd_balance", "100.00");
-        }
-
-        if (isDemoMode) {
-          setUserEmail("operator@appsminers.com");
-          setIsAdmin(true);
-          
-          setAllProfiles([
-            { id: "1", username: "Lian Mollick Nehal", is_admin: true, phone_number: "+880-170-000-0000", country: "Bangladesh" },
-            { id: "2", username: "Alex Mercer", is_admin: false, phone_number: "+1-415-555-2671", country: "United States" },
-            { id: "3", username: "Fatima Al-Sudais", is_admin: false, phone_number: "+966-50-123-4567", country: "Saudi Arabia" },
-            { id: "4", username: "Dr. Elena Rostova", is_admin: false, phone_number: "+7-903-123-4567", country: "Russia" },
-            { id: "5", username: "Marcus Vance", is_admin: false, phone_number: "+44-20-7946-0192", country: "United Kingdom" }
-          ]);
-          setAllNodes([
-            { id: "1", name: "Cluster-Alpha-1", status: "online", hashrate: 125.4 },
-            { id: "2", name: "Cluster-Alpha-2", status: "online", hashrate: 110.2 },
-            { id: "3", name: "Cluster-Beta-1", status: "online", hashrate: 95.8 },
-            { id: "4", name: "Cluster-Beta-2", status: "online", hashrate: 84.4 },
-            { id: "5", name: "DeepVault-Node-3", status: "online", hashrate: 62.4 }
-          ]);
-          
-          const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
-          let loadedNodes: any[] = [];
-          if (localNodesStr) {
-            loadedNodes = JSON.parse(localNodesStr);
-          } else {
-            loadedNodes = [
-              { id: "demo-n1", productName: "AppsMiners Nano Premium", hashrate: "10 TH/s", power: "10 W", region: "Europe-West", status: "online", hosting_type: "physical", setup_configured: true, created_at: new Date(Date.now() - 3600000).toISOString() },
-              { id: "demo-n2", productName: "AppsMiners Pocket Pro", hashrate: "110.2 TH/s", power: "550 W", region: "US-East", status: "online", hosting_type: "remote", setup_configured: true, created_at: new Date(Date.now() - 3600000).toISOString() },
-              { id: "demo-n3", productName: "AppsMiners Mini Enterprise", hashrate: "220.5 TH/s", power: "1200 W", region: "Asia-Pacific", status: "online", hosting_type: "remote", setup_configured: true, created_at: new Date(Date.now() - 3600000).toISOString() }
-            ];
-            localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(loadedNodes));
-          }
-
-          setNodesList(loadedNodes);
-          setUsdBalance(balance);
-          setLoading(false);
-          return;
-        }
 
         const { data: { session }, error } = await supabase.auth.getSession();
         if (session) {
@@ -562,18 +505,15 @@ export default function Dashboard() {
     let subscription: any = null;
 
     try {
-      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
-      if (!isDemoMode) {
-        const authRes = supabase.auth.onAuthStateChange((_event, session) => {
-          if (!session) {
-            router.push("/login");
-          } else {
-            setUserId(session.user?.id || "");
-            setUserEmail(session.user?.email || "operator@appsminers.com");
-          }
-        });
-        subscription = authRes.data?.subscription;
-      }
+      const authRes = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!session) {
+          router.push("/login");
+        } else {
+          setUserId(session.user?.id || "");
+          setUserEmail(session.user?.email || "operator@appsminers.com");
+        }
+      });
+      subscription = authRes.data?.subscription;
     } catch (err) {
       console.warn("Supabase auth state listener failed", err);
     }
@@ -589,8 +529,6 @@ export default function Dashboard() {
   useEffect(() => {
     let lastSyncTime = Date.now();
     const interval = setInterval(async () => {
-      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
-      
       const getRate = (name: string): number => {
         const lower = name.toLowerCase();
         if (lower.includes("t200")) return 0.05;
@@ -624,14 +562,7 @@ export default function Dashboard() {
             nodesChanged = true;
             const updatedNode = { ...node, status: "online" };
             
-            if (isDemoMode) {
-              const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
-              if (localNodesStr) {
-                const currentNodes = JSON.parse(localNodesStr);
-                const localUpdated = currentNodes.map((n: any) => n.id === node.id ? { ...n, status: "online" } : n);
-                localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(localUpdated));
-              }
-            } else if (userId) {
+            if (userId) {
               supabase
                 .from("nodes")
                 .update({ status: "online" })
@@ -650,14 +581,7 @@ export default function Dashboard() {
             nodesChanged = true;
             const updatedNode = { ...node, status: "delivered" };
             
-            if (isDemoMode) {
-              const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
-              if (localNodesStr) {
-                const currentNodes = JSON.parse(localNodesStr);
-                const localUpdated = currentNodes.map((n: any) => n.id === node.id ? { ...n, status: "delivered" } : n);
-                localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(localUpdated));
-              }
-            } else if (userId) {
+            if (userId) {
               supabase
                 .from("nodes")
                 .update({ status: "delivered" })
@@ -679,10 +603,6 @@ export default function Dashboard() {
         return node;
       });
 
-      if (isDemoMode) {
-        localStorage.setItem("appsminers_last_sync_time", Date.now().toString());
-      }
-
       if (nodesChanged) {
         setNodesList(updatedNodes);
       }
@@ -692,7 +612,7 @@ export default function Dashboard() {
           const nextBal = prev + balanceDiff;
           localStorage.setItem("appsminers_usd_balance", nextBal.toFixed(2));
           
-          if (!isDemoMode && Date.now() - lastSyncTime >= 15000 && userId) {
+          if (Date.now() - lastSyncTime >= 15000 && userId) {
             lastSyncTime = Date.now();
             supabase
               .from("wallets")
@@ -703,7 +623,7 @@ export default function Dashboard() {
           return nextBal;
         });
       } else {
-        if (!isDemoMode && Date.now() - lastSyncTime >= 15000 && userId) {
+        if (Date.now() - lastSyncTime >= 15000 && userId) {
           lastSyncTime = Date.now();
           supabase
             .from("wallets")
@@ -1226,7 +1146,7 @@ export default function Dashboard() {
                   <div className="space-y-4">
                     <div className="p-3 bg-white/5 rounded-xl border border-white/5">
                       <p className="text-[9px] font-black uppercase text-gray-500 tracking-wider mb-1">{l.dbEndpoint}</p>
-                      <p className="text-xs font-mono text-white truncate">{dbUrl || (isDemo ? "https://db.appsminers-secure-cloud.co" : "Not Configured")}</p>
+                      <p className="text-xs font-mono text-white truncate">{dbUrl || "Not Configured"}</p>
                     </div>
 
                     <div className="p-3 bg-white/5 rounded-xl border border-white/5 flex justify-between items-center">

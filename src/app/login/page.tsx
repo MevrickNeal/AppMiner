@@ -63,20 +63,6 @@ export default function Login() {
     setErrorMsg("");
     setSuccessMsg("");
 
-    const hasDbConfig = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!hasDbConfig) {
-      localStorage.setItem("appsminers_demo", "true");
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("appsminers_auth_change"));
-      }
-      setSuccessMsg(authMode === "signin" ? "Sandbox Session Initialized!" : "Sandbox Registration Successful!");
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 1000);
-      return;
-    }
-
     localStorage.removeItem("appsminers_demo");
 
     try {

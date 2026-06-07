@@ -10,24 +10,6 @@ export default function OrderHistoryView() {
 
   useEffect(() => {
     async function loadPurchases() {
-      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
-      if (isDemoMode) {
-        const localPurchasesStr = localStorage.getItem("appsminers_purchased_history");
-        if (localPurchasesStr) {
-          setPurchases(JSON.parse(localPurchasesStr));
-        } else {
-          // default initial purchase history
-          const defaultPurchases = [
-            { id: "demo-p1", product_name: "AppsMiners Pocket Pro", price_paid: 1299, status: "completed", created_at: new Date().toISOString() },
-            { id: "demo-p2", product_name: "AppsMiners Nano Premium", price_paid: 99, status: "completed", created_at: new Date(Date.now() - 86400000).toISOString() }
-          ];
-          localStorage.setItem("appsminers_purchased_history", JSON.stringify(defaultPurchases));
-          setPurchases(defaultPurchases);
-        }
-        setLoading(false);
-        return;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 

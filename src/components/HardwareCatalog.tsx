@@ -1160,23 +1160,16 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
 
   useEffect(() => {
     async function loadBalance() {
-      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
       let balance = 100.00;
-      const localBal = localStorage.getItem("appsminers_usd_balance");
-      if (localBal !== null) {
-        balance = parseFloat(localBal);
-      }
-      if (!isDemoMode) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { data: wallet } = await supabase
-            .from("wallets")
-            .select("usd_balance")
-            .eq("user_id", session.user.id)
-            .single();
-          if (wallet && wallet.usd_balance !== null) {
-            balance = parseFloat(String(wallet.usd_balance));
-          }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: wallet } = await supabase
+          .from("wallets")
+          .select("usd_balance")
+          .eq("user_id", session.user.id)
+          .single();
+        if (wallet && wallet.usd_balance !== null) {
+          balance = parseFloat(String(wallet.usd_balance));
         }
       }
       setCurrentBalance(balance);
@@ -1192,9 +1185,8 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
     }
 
     // Check auth
-    const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session && !isDemoMode) {
+    if (!session) {
       alert("You must be logged in to make a purchase. Redirecting to login...");
       router.push("/login");
       return;
@@ -1213,8 +1205,6 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
           setTimeout(async () => {
             setStep(5);
             try {
-              const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
-              
               const numericPrice = typeof product.price === "number" 
                 ? product.price 
                 : parseFloat(String(product.price).replace(/[^0-9.]/g, "")) || 0;
@@ -1224,22 +1214,13 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
 
               // 1. Fetch current USD balance
               let currentBalance = 100.00;
-              const localBal = localStorage.getItem("appsminers_usd_balance");
-              if (localBal !== null) {
-                currentBalance = parseFloat(localBal);
-              } else {
-                localStorage.setItem("appsminers_usd_balance", "100.00");
-              }
-
-              if (!isDemoMode && session) {
-                const { data: wallet } = await supabase
-                  .from("wallets")
-                  .select("usd_balance")
-                  .eq("user_id", session.user.id)
-                  .single();
-                if (wallet && wallet.usd_balance !== null) {
-                  currentBalance = parseFloat(String(wallet.usd_balance));
-                }
+              const { data: wallet } = await supabase
+                .from("wallets")
+                .select("usd_balance")
+                .eq("user_id", session.user.id)
+                .single();
+              if (wallet && wallet.usd_balance !== null) {
+                currentBalance = parseFloat(String(wallet.usd_balance));
               }
 
               // 2. Enforce credit check
@@ -1251,57 +1232,10 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
               const newBalance = currentBalance - numericPrice;
               localStorage.setItem("appsminers_usd_balance", newBalance.toFixed(2));
 
-              if (!isDemoMode && session) {
-                await supabase
-                  .from("wallets")
-                  .update({ usd_balance: newBalance })
-                  .eq("user_id", session.user.id);
-              }
-
-              if (isDemoMode) {
-                // Mock local storage purchase for nodes
-                const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
-                const currentNodes = localNodesStr ? JSON.parse(localNodesStr) : [
-                  { id: "demo-n1", productName: "AppsMiners Nano Premium", hashrate: "10 TH/s", power: "10 W", region: "Europe-West", status: "online" },
-                  { id: "demo-n2", productName: "AppsMiners Pocket Pro", hashrate: "110.2 TH/s", power: "550 W", region: "US-East", status: "online" },
-                  { id: "demo-n3", productName: "AppsMiners Mini Enterprise", hashrate: "220.5 TH/s", power: "1200 W", region: "Asia-Pacific", status: "online" }
-                ];
-                
-                const newNode = {
-                  id: "demo-n-" + Date.now(),
-                  productName: product.name,
-                  hashrate: cleanHashrate,
-                  power: cleanPower,
-                  region: region.split(" (")[0],
-                  status: "pending_setup",
-                  hosting_type: "remote",
-                  setup_configured: false,
-                  shipping_address: null,
-                  created_at: new Date().toISOString()
-                };
-                localStorage.setItem("appsminers_purchased_nodes", JSON.stringify([newNode, ...currentNodes]));
-
-                // Mock local storage purchase history
-                const localPurchasesStr = localStorage.getItem("appsminers_purchased_history");
-                const currentPurchases = localPurchasesStr ? JSON.parse(localPurchasesStr) : [
-                  { id: "demo-p1", product_name: "AppsMiners Pocket Pro", price_paid: 1299, status: "completed", created_at: new Date().toISOString() },
-                  { id: "demo-p2", product_name: "AppsMiners Nano Premium", price_paid: 99, status: "completed", created_at: new Date(Date.now() - 86400000).toISOString() }
-                ];
-                
-                const newPurchase = {
-                  id: "demo-pur-" + Date.now(),
-                  product_id: product.id,
-                  product_name: product.name,
-                  price_paid: numericPrice,
-                  status: "completed",
-                  created_at: new Date().toISOString()
-                };
-                localStorage.setItem("appsminers_purchased_history", JSON.stringify([newPurchase, ...currentPurchases]));
-
-                onClose();
-                router.push(`/dashboard`);
-                return;
-              }
+              await supabase
+                .from("wallets")
+                .update({ usd_balance: newBalance })
+                .eq("user_id", session.user.id);
 
               // Insert purchase to Supabase
               if (!session) throw new Error("No active session found.");

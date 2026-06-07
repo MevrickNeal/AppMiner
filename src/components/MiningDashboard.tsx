@@ -571,36 +571,22 @@ export default function MiningDashboard({
   const displayedNodes = nodes !== undefined ? nodes : purchasedNodes;
 
   const handleSetupNode = async (nodeId: string, updates: any) => {
-    const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
-    if (isDemoMode) {
-      const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
-      if (localNodesStr) {
-        const currentNodes = JSON.parse(localNodesStr);
-        const updated = currentNodes.map((n: any) => 
-          n.id === nodeId ? { ...n, ...updates } : n
-        );
-        localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(updated));
-        if (setNodes) setNodes(updated);
-        setPurchasedNodes(updated);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { error } = await supabase
+      .from("nodes")
+      .update(updates)
+      .eq("id", nodeId)
+      .eq("user_id", session.user.id);
+
+    if (!error) {
+      if (setNodes) {
+        setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, ...updates } : n));
       }
+      setPurchasedNodes(prev => prev.map(n => n.id === nodeId ? { ...n, ...updates } : n));
     } else {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { error } = await supabase
-        .from("nodes")
-        .update(updates)
-        .eq("id", nodeId)
-        .eq("user_id", session.user.id);
-
-      if (!error) {
-        if (setNodes) {
-          setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, ...updates } : n));
-        }
-        setPurchasedNodes(prev => prev.map(n => n.id === nodeId ? { ...n, ...updates } : n));
-      } else {
-        alert("Node setup failed: " + error.message);
-      }
+      alert("Node setup failed: " + error.message);
     }
   };
 
@@ -618,34 +604,22 @@ export default function MiningDashboard({
       return;
     }
 
-    const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
-    if (isDemoMode) {
-      const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
-      if (localNodesStr) {
-        const currentNodes = JSON.parse(localNodesStr);
-        const updated = currentNodes.map((n: any) => n.id === nodeId ? { ...n, status: newStatus } : n);
-        localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(updated));
-        if (setNodes) setNodes(updated);
-        setPurchasedNodes(updated);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { error } = await supabase
+      .from("nodes")
+      .update({ status: newStatus })
+      .eq("id", nodeId)
+      .eq("user_id", session.user.id);
+
+    if (!error) {
+      if (setNodes) {
+        setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, status: newStatus } : n));
       }
+      setPurchasedNodes(prev => prev.map(n => n.id === nodeId ? { ...n, status: newStatus } : n));
     } else {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { error } = await supabase
-        .from("nodes")
-        .update({ status: newStatus })
-        .eq("id", nodeId)
-        .eq("user_id", session.user.id);
-
-      if (!error) {
-        if (setNodes) {
-          setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, status: newStatus } : n));
-        }
-        setPurchasedNodes(prev => prev.map(n => n.id === nodeId ? { ...n, status: newStatus } : n));
-      } else {
-        alert("Remote control failed: " + error.message);
-      }
+      alert("Remote control failed: " + error.message);
     }
   };
 
@@ -659,26 +633,6 @@ export default function MiningDashboard({
 
     // Fetch real nodes from Supabase
     async function fetchNodes() {
-      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
-      if (isDemoMode) {
-        const localNodesStr = localStorage.getItem("appsminers_purchased_nodes");
-        if (localNodesStr) {
-          const parsed = JSON.parse(localNodesStr);
-          setPurchasedNodes(parsed);
-          if (setNodes) setNodes(parsed);
-        } else {
-          const defaultNodes = [
-            { id: "demo-n1", productName: "AppsMiners Nano Premium", hashrate: "10 TH/s", power: "10 W", region: "Europe-West", status: "online" },
-            { id: "demo-n2", productName: "AppsMiners Pocket Pro", hashrate: "110.2 TH/s", power: "550 W", region: "US-East", status: "online" },
-            { id: "demo-n3", productName: "AppsMiners Mini Enterprise", hashrate: "220.5 TH/s", power: "1200 W", region: "Asia-Pacific", status: "online" }
-          ];
-          localStorage.setItem("appsminers_purchased_nodes", JSON.stringify(defaultNodes));
-          setPurchasedNodes(defaultNodes);
-          if (setNodes) setNodes(defaultNodes);
-        }
-        return;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 

@@ -20,12 +20,6 @@ export default function Navbar() {
 
   useEffect(() => {
     async function checkSession() {
-      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
-      if (isDemoMode) {
-        setUser({ email: "operator@appsminers.com", name: "OPERATOR" });
-        return;
-      }
-
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
@@ -51,13 +45,7 @@ export default function Navbar() {
           const name = email ? email.split("@")[0].toUpperCase() : "OPERATOR";
           setUser({ email, name });
         } else {
-          // Check if demo is set
-          const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
-          if (isDemoMode) {
-            setUser({ email: "operator@appsminers.com", name: "OPERATOR" });
-          } else {
-            setUser(null);
-          }
+          setUser(null);
         }
       });
       subscription = data?.subscription;
@@ -65,23 +53,18 @@ export default function Navbar() {
       console.warn("Auth state change listener failed in Navbar", err);
     }
 
-    // Listen to localStorage changes (for demo login/logout across pages)
+    // Listen to localStorage changes
     const handleStorageChange = () => {
-      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
-      if (isDemoMode) {
-        setUser({ email: "operator@appsminers.com", name: "OPERATOR" });
-      } else {
-        // Double check session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session?.user) {
-            const email = session.user.email;
-            const name = email ? email.split("@")[0].toUpperCase() : "OPERATOR";
-            setUser({ email, name });
-          } else {
-            setUser(null);
-          }
-        });
-      }
+      // Double check session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          const email = session.user.email;
+          const name = email ? email.split("@")[0].toUpperCase() : "OPERATOR";
+          setUser({ email, name });
+        } else {
+          setUser(null);
+        }
+      });
     };
 
     window.addEventListener("storage", handleStorageChange);

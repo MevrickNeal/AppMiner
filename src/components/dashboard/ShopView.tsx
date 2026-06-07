@@ -93,25 +93,14 @@ export default function ShopView({
 
   useEffect(() => {
     async function loadOwnedItems() {
-      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
-      
-      if (isDemoMode) {
-        const localPurchasesStr = localStorage.getItem("appsminers_purchased_history");
-        if (localPurchasesStr) {
-          const list = JSON.parse(localPurchasesStr);
-          const ids = list.map((p: any) => p.product_id);
-          setOwnedItems(ids);
-        }
-      } else {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { data } = await supabase
-            .from("purchases")
-            .select("product_id")
-            .eq("user_id", session.user.id);
-          if (data) {
-            setOwnedItems(data.map((p: any) => p.product_id));
-          }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data } = await supabase
+          .from("purchases")
+          .select("product_id")
+          .eq("user_id", session.user.id);
+        if (data) {
+          setOwnedItems(data.map((p: any) => p.product_id));
         }
       }
     }
@@ -132,51 +121,35 @@ export default function ShopView({
     setPurchasingId(item.id);
 
     try {
-      const isDemoMode = typeof window !== "undefined" && localStorage.getItem("appsminers_demo") === "true";
       const newBalance = usdBalance - item.price;
       
       // Update local balance
       setUsdBalance(newBalance);
       localStorage.setItem("appsminers_usd_balance", newBalance.toFixed(2));
 
-      if (isDemoMode) {
-        // Record in local purchased history
-        const localPurchasesStr = localStorage.getItem("appsminers_purchased_history");
-        const currentPurchases = localPurchasesStr ? JSON.parse(localPurchasesStr) : [];
-        const newPurchase = {
-          id: "demo-shop-" + Date.now(),
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active session found");
+
+      // Update wallet balance in database
+      const { error: walletError } = await supabase
+        .from("wallets")
+        .update({ usd_balance: newBalance })
+        .eq("user_id", session.user.id);
+      
+      if (walletError) throw walletError;
+
+      // Insert purchase transaction
+      const { error: purchaseError } = await supabase
+        .from("purchases")
+        .insert({
+          user_id: session.user.id,
           product_id: item.id,
           product_name: item.name,
           price_paid: item.price,
-          status: "completed",
-          created_at: new Date().toISOString()
-        };
-        localStorage.setItem("appsminers_purchased_history", JSON.stringify([newPurchase, ...currentPurchases]));
-      } else {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error("No active session found");
-
-        // Update wallet balance in database
-        const { error: walletError } = await supabase
-          .from("wallets")
-          .update({ usd_balance: newBalance })
-          .eq("user_id", session.user.id);
-        
-        if (walletError) throw walletError;
-
-        // Insert purchase transaction
-        const { error: purchaseError } = await supabase
-          .from("purchases")
-          .insert({
-            user_id: session.user.id,
-            product_id: item.id,
-            product_name: item.name,
-            price_paid: item.price,
-            status: "completed"
-          });
-        
-        if (purchaseError) throw purchaseError;
-      }
+          status: "completed"
+        });
+      
+      if (purchaseError) throw purchaseError;
 
       setSuccessId(item.id);
       setTimeout(() => {
