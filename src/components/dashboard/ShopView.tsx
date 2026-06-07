@@ -133,7 +133,7 @@ export default function ShopView({
       // Update wallet balance in database
       const { error: walletError } = await supabase
         .from("wallets")
-        .update({ usd_balance: newBalance })
+        .update({ hot_wallet_balance: newBalance })
         .eq("user_id", session.user.id);
       
       if (walletError) throw walletError;

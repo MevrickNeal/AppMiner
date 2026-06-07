@@ -1165,11 +1165,22 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
       if (session) {
         const { data: wallet } = await supabase
           .from("wallets")
-          .select("usd_balance")
+          .select("hot_wallet_balance")
           .eq("user_id", session.user.id)
           .single();
-        if (wallet && wallet.usd_balance !== null) {
-          balance = parseFloat(String(wallet.usd_balance));
+        if (wallet && wallet.hot_wallet_balance !== null) {
+          const dbBal = parseFloat(String(wallet.hot_wallet_balance));
+          if (dbBal === 0) {
+            const { data: nodes } = await supabase.from("nodes").select("id").eq("user_id", session.user.id);
+            const { data: purchases } = await supabase.from("purchases").select("id").eq("user_id", session.user.id);
+            if ((!nodes || nodes.length === 0) && (!purchases || purchases.length === 0)) {
+              balance = 100.00;
+            } else {
+              balance = 0.00;
+            }
+          } else {
+            balance = dbBal;
+          }
         }
       }
       setCurrentBalance(balance);
@@ -1212,15 +1223,26 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
               const cleanHashrate = product.hashrate || (product.id === "starter-kit" ? "2.15 TH/s" : "50 TH/s");
               const cleanPower = product.id === "starter-kit" ? "185 W" : (product.id === "t200" ? "5,000 W" : product.id === "f100" ? "2,800 W" : product.id === "f50" ? "1,500 W" : product.id === "mini" ? "45 W" : product.id === "nano" ? "10 W" : "5 W");
 
-              // 1. Fetch current USD balance
+              // 1. Fetch current balance
               let currentBalance = 100.00;
               const { data: wallet } = await supabase
                 .from("wallets")
-                .select("usd_balance")
+                .select("hot_wallet_balance")
                 .eq("user_id", session.user.id)
                 .single();
-              if (wallet && wallet.usd_balance !== null) {
-                currentBalance = parseFloat(String(wallet.usd_balance));
+              if (wallet && wallet.hot_wallet_balance !== null) {
+                const dbBal = parseFloat(String(wallet.hot_wallet_balance));
+                if (dbBal === 0) {
+                  const { data: nodes } = await supabase.from("nodes").select("id").eq("user_id", session.user.id);
+                  const { data: purchases } = await supabase.from("purchases").select("id").eq("user_id", session.user.id);
+                  if ((!nodes || nodes.length === 0) && (!purchases || purchases.length === 0)) {
+                    currentBalance = 100.00;
+                  } else {
+                    currentBalance = 0.00;
+                  }
+                } else {
+                  currentBalance = dbBal;
+                }
               }
 
               // 2. Enforce credit check
@@ -1234,7 +1256,7 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
 
               await supabase
                 .from("wallets")
-                .update({ usd_balance: newBalance })
+                .update({ hot_wallet_balance: newBalance })
                 .eq("user_id", session.user.id);
 
               // Insert purchase to Supabase

@@ -435,23 +435,26 @@ export default function Dashboard() {
             setNodesList(res.updatedNodes);
           } else {
             console.warn("Server action offline earnings sync failed, using client-side fallback:", res?.error);
-            const { data: wallet } = await supabase
-              .from("wallets")
-              .select("usd_balance")
-              .eq("user_id", session.user.id)
-              .single();
-
-            if (wallet && wallet.usd_balance !== null) {
-              const dbBal = parseFloat(String(wallet.usd_balance));
-              setUsdBalance(dbBal);
-              localStorage.setItem("appsminers_usd_balance", dbBal.toFixed(2));
-            }
-
             const { data: nodesData } = await supabase
               .from("nodes")
               .select("*")
               .eq("user_id", session.user.id)
               .order("created_at", { ascending: false });
+
+            const { data: wallet } = await supabase
+              .from("wallets")
+              .select("hot_wallet_balance")
+              .eq("user_id", session.user.id)
+              .single();
+
+            if (wallet && wallet.hot_wallet_balance !== null) {
+              let dbBal = parseFloat(String(wallet.hot_wallet_balance));
+              if (dbBal === 0 && (!nodesData || nodesData.length === 0)) {
+                dbBal = 100.00;
+              }
+              setUsdBalance(dbBal);
+              localStorage.setItem("appsminers_usd_balance", dbBal.toFixed(2));
+            }
 
             if (nodesData) {
               const mapped = nodesData.map(n => ({
@@ -616,7 +619,7 @@ export default function Dashboard() {
             lastSyncTime = Date.now();
             supabase
               .from("wallets")
-              .update({ usd_balance: nextBal, updated_at: new Date().toISOString() })
+              .update({ hot_wallet_balance: nextBal, updated_at: new Date().toISOString() })
               .eq("user_id", userId)
               .then();
           }

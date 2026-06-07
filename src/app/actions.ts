@@ -113,7 +113,7 @@ export async function syncMiningEarnings(
     // Fetch wallet balance
     const { data: wallet, error: walletError } = await supabase
       .from("wallets")
-      .select("usd_balance, updated_at")
+      .select("hot_wallet_balance, updated_at")
       .eq("user_id", userId)
       .single();
 
@@ -154,6 +154,17 @@ export async function syncMiningEarnings(
 
     const dbUpgrades = purchasesData ? purchasesData.map((p: any) => p.product_id) : [];
 
+    let currentBalance = parseFloat(String(wallet.hot_wallet_balance || 0));
+
+    // If it's a new account (balance is 0 and no nodes/purchases), give them $100 starting credit
+    if (currentBalance === 0 && dbNodes.length === 0 && dbUpgrades.length === 0) {
+      currentBalance = 100.00;
+      await supabase
+        .from("wallets")
+        .update({ hot_wallet_balance: 100.00 })
+        .eq("user_id", userId);
+    }
+
     const lastSyncTime = wallet.updated_at ? new Date(wallet.updated_at).getTime() : Date.now();
     const now = Date.now();
     const elapsedHours = (now - lastSyncTime) / 3600000;
@@ -167,13 +178,12 @@ export async function syncMiningEarnings(
       systemActive
     );
 
-    const currentBalance = parseFloat(String(wallet.usd_balance));
     const finalBalance = currentBalance + earnings;
 
     // Persist new balance and sync timestamp securely
     const { error: updateError } = await supabase
       .from("wallets")
-      .update({ usd_balance: finalBalance, updated_at: new Date().toISOString() })
+      .update({ hot_wallet_balance: finalBalance, updated_at: new Date().toISOString() })
       .eq("user_id", userId);
 
     if (updateError) {
