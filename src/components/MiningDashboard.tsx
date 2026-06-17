@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Activity, TrendingUp, Zap, Cpu, BarChart3, Hash, Thermometer, Wind, Truck, Cloud, Home, Wrench, ShieldCheck, Package } from "lucide-react";
+import { Activity, TrendingUp, Zap, Cpu, BarChart3, Hash, Thermometer, Wind, Truck, Cloud, Home, Wrench, ShieldCheck, Package, Globe, Info } from "lucide-react";
 import { useTranslation } from "@/context/LanguageContext";
 import { supabase } from "@/lib/supabase";
+import { sanitizeText, sanitizeAlphanumeric } from "@/lib/sanitize";
 
 // Localized Dashboard Mappings
 const DASH_I18N: Record<string, any> = {
@@ -248,19 +249,19 @@ function Sparkline({ data }: { data: { time: string; value: number }[] }) {
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full" preserveAspectRatio="none">
       <defs>
         <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#00f2ff" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#00f2ff" stopOpacity="0" />
+          <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#60a5fa" stopOpacity="0" />
         </linearGradient>
       </defs>
       <polygon points={area} fill="url(#sparkGrad)" />
-      <polyline points={polyline} fill="none" stroke="#00f2ff" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={polyline} fill="none" stroke="#60a5fa" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
       {/* Latest value dot */}
       {pts.length > 0 && (() => {
         const parts = pts[pts.length - 1].split(",");
         const x = Number(parts[0] || 0);
         const y = Number(parts[1] || 0);
         return (
-          <circle cx={x} cy={y} r="4" fill="#00f2ff">
+          <circle cx={x} cy={y} r="4" fill="#60a5fa">
             <animate attributeName="r" values="4;7;4" dur="1.5s" repeatCount="indefinite" />
             <animate attributeName="opacity" values="1;0.5;1" dur="1.5s" repeatCount="indefinite" />
           </circle>
@@ -288,7 +289,7 @@ function BarChart({ data }: { data: { day: string; btc: number }[] }) {
           >
             <div
               className="w-full h-full rounded-t-lg"
-              style={{ background: `linear-gradient(to top, #00f2ff44, #00f2ff)` }}
+              style={{ background: `linear-gradient(to top, #60a5fa44, #60a5fa)` }}
             />
           </motion.div>
           <span className="text-[9px] font-black text-gray-600 uppercase">{d.day}</span>
@@ -302,36 +303,61 @@ function BarChart({ data }: { data: { day: string; btc: number }[] }) {
 function NodeCardComponent({ 
   node, 
   handleRemoteControl, 
-  nl 
+  nl,
+  overclocked = false,
+  ownedUpgrades = []
 }: { 
   node: any; 
   handleRemoteControl: (id: string, stat: string) => void; 
   nl: any;
+  overclocked?: boolean;
+  ownedUpgrades?: string[];
 }) {
   const baseHash = parseFloat(node.hashrate) || 0;
   const unit = node.hashrate.replace(/[0-9.]/g, "").trim() || "TH/s";
   
-  const [fluctuatedHash, setFluctuatedHash] = useState(node.status === "online" ? baseHash : 0);
-  const [temp, setTemp] = useState(node.status === "online" ? 70.4 : 32.0);
-  const [fan, setFan] = useState(node.status === "online" ? 4180 : 0);
+  const [fluctuatedHash, setFluctuatedHash] = useState(node.status === "online" ? (overclocked ? baseHash * 1.15 : baseHash) : 0);
+  const [temp, setTemp] = useState(node.status === "online" ? (overclocked ? 77.2 : 70.4) : 32.0);
+  const [fan, setFan] = useState(node.status === "online" ? (overclocked ? 4850 : 4180) : 0);
+
+  useEffect(() => {
+    if (node.status === "activating") {
+      const elapsed = Date.now() - new Date(node.created_at || Date.now()).getTime();
+      if (elapsed >= 30000) {
+        handleRemoteControl(node.id, "online");
+      } else {
+        const timer = setTimeout(() => {
+          handleRemoteControl(node.id, "online");
+        }, 30000 - elapsed);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [node.status, node.created_at, node.id, handleRemoteControl]);
 
   useEffect(() => {
     const timer = setInterval(() => {
       if (node.status === "online") {
-        // Fluctuate hashrate by ±1.5% for live physics feel
-        const variance = (Math.random() - 0.5) * 0.03 * baseHash;
-        setFluctuatedHash(Number((baseHash + variance).toFixed(2)));
+        // Boost hashrate by 15% if overclocked
+        const targetHash = overclocked ? baseHash * 1.15 : baseHash;
+        const variance = (Math.random() - 0.5) * 0.03 * targetHash;
+        setFluctuatedHash(Number((targetHash + variance).toFixed(2)));
         
-        // Warm up or hover temperature between 68.0°C and 74.0°C
+        // Overclock runs hot, cooling booster reduces heat
+        const hasCooling = ownedUpgrades.includes("cooling-booster");
+        const targetTemp = overclocked ? (hasCooling ? 71.5 : 77.2) : (hasCooling ? 64.8 : 70.4);
+        
         setTemp(prev => {
-          if (prev < 68) return prev + 2.5;
-          return 70 + (Math.random() - 0.5) * 2;
+          if (prev < targetTemp - 2) return prev + 2.0;
+          if (prev > targetTemp + 2) return prev - 2.0;
+          return targetTemp + (Math.random() - 0.5) * 1.5;
         });
 
-        // Warm up or hover fan speed between 3800 and 4400 RPM
+        // Fans spin faster for higher temps
+        const targetFan = overclocked ? 4850 : 4180;
         setFan(prev => {
-          if (prev < 3800) return prev + 350;
-          return 4100 + Math.round((Math.random() - 0.5) * 120);
+          if (prev < targetFan - 200) return prev + 350;
+          if (prev > targetFan + 200) return prev - 350;
+          return targetFan + Math.round((Math.random() - 0.5) * 120);
         });
       } else {
         // Drop hashrate to 0 instantly
@@ -352,7 +378,7 @@ function NodeCardComponent({
     }, 2000);
 
     return () => clearInterval(timer);
-  }, [node.status, baseHash]);
+  }, [node.status, baseHash, overclocked, ownedUpgrades]);
 
   const conditionText = () => {
     if (node.status === "online") return "Optimal Performance";
@@ -371,12 +397,12 @@ function NodeCardComponent({
               <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider font-mono">{node.id.slice(0, 8)}...</p>
               <span className="text-gray-700 font-black text-[9px]">•</span>
               <span className={`text-[9px] font-black uppercase tracking-wider flex items-center gap-1 ${
-                node.hosting_type === "physical" ? "text-emerald-400" : "text-[#00f2ff]/80"
+                node.hosting_type === "physical" ? "text-emerald-400" : "text-[#60a5fa]/80"
               }`}>
                 {node.hosting_type === "physical" ? (
                   <><Home size={10} /> Local Connection</>
                 ) : (
-                  <><Cloud size={10} /> Remote Hosted</>
+                  <><Cloud size={10} /> Rented Cloud Rig</>
                 )}
               </span>
             </div>
@@ -388,7 +414,7 @@ function NodeCardComponent({
                 ? "bg-amber-500/10 border border-amber-500/20 text-amber-400" 
                 : node.status === "shutdown"
                   ? "bg-red-500/10 border border-red-500/20 text-red-400"
-                  : "bg-[#00f2ff]/10 border border-[#00f2ff]/20 text-[#00f2ff]"
+                  : "bg-[#60a5fa]/10 border border-[#60a5fa]/20 text-[#60a5fa]"
           }`}>
             <span className={`w-1.5 h-1.5 rounded-full ${
               node.status === "online" 
@@ -397,13 +423,13 @@ function NodeCardComponent({
                   ? "bg-amber-400" 
                   : node.status === "shutdown"
                     ? "bg-red-400"
-                    : "bg-[#00f2ff] animate-ping"
+                    : "bg-[#60a5fa] animate-ping"
             }`} />
             {node.status === "activating" ? (
               <>
                 {(() => {
                   const elapsed = Date.now() - new Date(node.created_at || Date.now()).getTime();
-                  const remaining = Math.max(0, Math.ceil((120000 - elapsed) / 1000));
+                  const remaining = Math.max(0, Math.ceil((30000 - elapsed) / 1000));
                   return remaining > 0 ? `Activating (${remaining}s)` : "Online";
                 })()}
               </>
@@ -424,7 +450,7 @@ function NodeCardComponent({
             <p className="text-sm font-black text-white font-mono">{node.status === "online" ? node.power : "0 W"}</p>
           </div>
           <div className="flex items-center gap-1.5">
-            <Thermometer size={14} className="text-[#00f2ff]/60" />
+            <Thermometer size={14} className="text-[#60a5fa]/60" />
             <div>
               <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Core Temp</p>
               <p className={`text-xs font-black font-mono ${temp > 72 ? "text-amber-400" : "text-white"}`}>
@@ -433,7 +459,7 @@ function NodeCardComponent({
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <Wind size={14} className="text-[#00f2ff]/60" />
+            <Wind size={14} className="text-[#60a5fa]/60" />
             <div>
               <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Fan Speed</p>
               <p className="text-xs font-black text-white font-mono">{fan.toLocaleString()} RPM</p>
@@ -442,14 +468,14 @@ function NodeCardComponent({
           <div className="col-span-2 pt-2 border-t border-white/5 flex justify-between items-center">
             <div>
               <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Status Telemetry</p>
-              <p className="text-[10px] font-bold text-[#00f2ff]/80 uppercase tracking-wider">{conditionText()}</p>
+              <p className="text-[10px] font-bold text-[#60a5fa]/80 uppercase tracking-wider">{conditionText()}</p>
             </div>
             <div className="text-right">
               <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Yield Rate</p>
               <p className={`text-[10px] font-black uppercase tracking-wider ${
                 node.hosting_type === "remote" ? "text-amber-400" : "text-emerald-400"
               }`}>
-                {node.hosting_type === "remote" ? "85% (-15% Fee)" : "100% Yield"}
+                {node.hosting_type === "remote" ? "85% Yield (Rented)" : "100% Yield"}
               </p>
             </div>
           </div>
@@ -499,7 +525,7 @@ function NodeCardComponent({
           </button>
         )}
         {node.status === "activating" && (
-          <div className="w-full text-center text-xs text-[#00f2ff] font-bold uppercase tracking-wider animate-pulse py-1">
+          <div className="w-full text-center text-xs text-[#60a5fa] font-bold uppercase tracking-wider animate-pulse py-1">
             Connecting to pool...
           </div>
         )}
@@ -516,9 +542,9 @@ function Gauge({ pct, color, label }: { pct: number; color: string; label: strin
     <div className="flex flex-col items-center gap-2">
       <div className="relative w-16 h-16">
         <svg viewBox="0 0 72 72" className="w-full h-full -rotate-90">
-          <circle cx="36" cy="36" r={r} fill="none" stroke="#1a1a1a" strokeWidth="6" />
+          <circle cx="36" cy="36" r={r} fill="none" stroke="#0f2347" strokeWidth="6" />
           <motion.circle
-            cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth="6"
+            cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth={6}
             strokeLinecap="round"
             strokeDasharray={`${circ}`}
             initial={{ strokeDashoffset: circ }}
@@ -535,16 +561,43 @@ function Gauge({ pct, color, label }: { pct: number; color: string; label: strin
   );
 }
 
+// ─── Latency Sparkline ──────────────────────────────────────
+function LatencySparkline({ pings, color }: { pings: number[]; color: string }) {
+  const W = 160; const H = 32;
+  const min = Math.min(...pings) - 2;
+  const max = Math.max(...pings) + 2;
+  const pts = pings.map((p, i) => {
+    const x = (i / (pings.length - 1)) * W;
+    const y = H - ((p - min) / (max - min)) * H;
+    return `${x},${y}`;
+  });
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-24 h-6 opacity-80" preserveAspectRatio="none">
+      <polyline points={pts.join(" ")} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export default function MiningDashboard({
   nodes,
   setNodes,
   usdBalance,
-  onRemoteControl
+  onRemoteControl,
+  selectedPool = "helsinki",
+  setSelectedPool,
+  overclocked = false,
+  setOverclocked,
+  ownedUpgrades = []
 }: {
   nodes?: any[];
   setNodes?: React.Dispatch<React.SetStateAction<any[]>>;
   usdBalance?: number;
   onRemoteControl?: (nodeId: string, newStatus: string) => void;
+  selectedPool?: string;
+  setSelectedPool?: (pool: string) => void;
+  overclocked?: boolean;
+  setOverclocked?: (ov: boolean) => void;
+  ownedUpgrades?: string[];
 }) {
   const { language, isRtl } = useTranslation();
   const code = language.code;
@@ -560,6 +613,88 @@ export default function MiningDashboard({
   const [secondsTick, setSecondsTick] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const displayedNodes = nodes !== undefined ? nodes : purchasedNodes;
+
+  // --- Stratum Pool Latency Sparkline Data ---
+  const [reykjavikPingHistory, setReykjavikPingHistory] = useState<number[]>([34, 33, 35, 32, 36, 33, 35, 34, 32, 35]);
+  const [luleaPingHistory, setLuleaPingHistory] = useState<number[]>([38, 39, 37, 40, 36, 39, 41, 38, 40, 37]);
+  const [helsinkiPingHistory, setHelsinkiPingHistory] = useState<number[]>([44, 46, 42, 45, 48, 43, 47, 44, 46, 45]);
+
+  // --- StrataTune AI Optimization Console ---
+  const [strataTuneActive, setStrataTuneActive] = useState(false);
+  const [gridPrice, setGridPrice] = useState<"Low" | "High">("Low");
+  const [aiLogs, setAiLogs] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setStrataTuneActive(localStorage.getItem("appsminers_strata_tune_active") === "true");
+    }
+  }, []);
+
+  // Tick ping histories
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setReykjavikPingHistory(prev => [...prev.slice(-9), Math.round(32 + Math.random() * 4)]);
+      setLuleaPingHistory(prev => [...prev.slice(-9), Math.round(36 + Math.random() * 6)]);
+      setHelsinkiPingHistory(prev => [...prev.slice(-9), Math.round(40 + Math.random() * 8)]);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fluctuating grid price
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setGridPrice(prev => {
+        const next = prev === "Low" ? "High" : "Low";
+        if (strataTuneActive) {
+          const now = new Date().toLocaleTimeString();
+          setAiLogs(logs => [
+            `[${now}] Grid power cost shifted to ${next.toUpperCase()} ($${next === "Low" ? "0.04" : "0.16"}/kWh).`,
+            ...logs.slice(0, 15)
+          ]);
+        }
+        return next;
+      });
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [strataTuneActive]);
+
+  // AI control loop
+  useEffect(() => {
+    if (!strataTuneActive) return;
+
+    const timer = setInterval(() => {
+      const activeRigs = displayedNodes.filter(n => n.status === "online");
+      if (activeRigs.length === 0) return;
+
+      const hasCooling = ownedUpgrades.includes("cooling-booster");
+      const highTempThreshold = hasCooling ? 78 : 74;
+      const currentTemp = overclocked ? (hasCooling ? 71.5 : 77.2) : (hasCooling ? 64.8 : 70.4);
+
+      const now = new Date().toLocaleTimeString();
+      if (gridPrice === "Low" && currentTemp < highTempThreshold) {
+        if (!overclocked && setOverclocked) {
+          setOverclocked(true);
+          setAiLogs(logs => [
+            `[${now}] Autopilot: Grid cost is LOW, core temp (${currentTemp.toFixed(1)}°C) safe. Engaging overclock yield boost (+15%).`,
+            ...logs.slice(0, 15)
+          ]);
+        }
+      } else {
+        if (overclocked && setOverclocked) {
+          setOverclocked(false);
+          const reason = gridPrice === "High" ? "HIGH grid cost" : `core temp (${currentTemp.toFixed(1)}°C) above safety (${highTempThreshold}°C)`;
+          setAiLogs(logs => [
+            `[${now}] Autopilot: Downclocking cluster to normal. Reason: ${reason}.`,
+            ...logs.slice(0, 15)
+          ]);
+        }
+      }
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [strataTuneActive, gridPrice, overclocked, displayedNodes, ownedUpgrades, setOverclocked]);
+
   // Countdown timer trigger
   useEffect(() => {
     const timer = setInterval(() => {
@@ -567,8 +702,6 @@ export default function MiningDashboard({
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-
-  const displayedNodes = nodes !== undefined ? nodes : purchasedNodes;
 
   const handleSetupNode = async (nodeId: string, updates: any) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -650,8 +783,8 @@ export default function MiningDashboard({
           power: n.power,
           region: n.region,
           status: n.status,
-          hosting_type: n.hosting_type || "remote",
-          setup_configured: n.setup_configured !== undefined && n.setup_configured !== null ? n.setup_configured : false,
+          hosting_type: n.shipping_address ? "physical" : "remote",
+          setup_configured: n.status !== "pending_setup" && n.status !== "shipping" && n.status !== "delivered",
           shipping_address: n.shipping_address || null,
           shipping_started_at: n.shipping_started_at || null,
           created_at: n.created_at
@@ -684,29 +817,29 @@ export default function MiningDashboard({
   const totalCount = displayedNodes.length;
 
   const STATS = [
-    { icon: Hash,       label: labels.liveHashrate,   value: `${liveHashrate} TH/s`, color: "#00f2ff" },
-    { icon: Zap,        label: labels.powerDraw,      value: "4,850 W",              color: "#f59e0b" },
+    { icon: Hash,       label: labels.liveHashrate,   value: `${liveHashrate} TH/s`, color: "#60a5fa" },
+    { icon: Zap,        label: labels.powerDraw,      value: "4,850 W",              color: "#3b82f6" },
     { icon: Cpu,        label: labels.activeDevices,  value: `${activeCount} / ${totalCount}`, color: "#10b981" },
-    { icon: TrendingUp, label: labels.todayEarnings,  value: "0.00341 BTC",          color: "#7c3aed" },
+    { icon: TrendingUp, label: labels.todayEarnings,  value: "0.00341 BTC",          color: "#60a5fa" },
   ];
 
   const EFFICIENCY_DATA = [
-    { label: "T200 Pro", pct: 94, color: "#00f2ff" },
-    { label: "F100 Pro", pct: 88, color: "#7c3aed" },
-    { label: "F50 Pro",  pct: 82, color: "#f59e0b" },
+    { label: "T200 Pro", pct: 94, color: "#3b82f6" },
+    { label: "F100 Pro", pct: 88, color: "#60a5fa" },
+    { label: "F50 Pro",  pct: 82, color: "#2563eb" },
     { label: "Mini",     pct: 71, color: "#10b981" },
-    { label: "Nano",     pct: 65, color: "#f97316" },
+    { label: "Nano",     pct: 65, color: "#93c5fd" },
   ];
 
   return (
-    <section className="py-24 bg-[#080808] text-white border-t border-white/5" dir={isRtl ? "rtl" : "ltr"}>
-      <div className="max-w-[1400px] mx-auto px-6">
+    <section className="py-8 md:py-16 bg-[#071028] text-white border-t border-white/5" dir={isRtl ? "rtl" : "ltr"}>
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6">
 
         {/* Header */}
-        <div className="mb-12">
-          <h2 className="text-[10px] font-black tracking-[0.3em] text-[#00f2ff] uppercase mb-4">{labels.liveOps}</h2>
+        <div className="mb-6 md:mb-12">
+          <h2 className="text-[10px] font-black tracking-[0.3em] text-[#60a5fa] uppercase mb-4">{labels.liveOps}</h2>
           <div className="flex flex-col md:flex-row justify-between items-end gap-6">
-            <h3 className="text-4xl md:text-6xl font-black tracking-tighter uppercase leading-none">
+            <h3 className="text-3xl md:text-6xl font-black tracking-tighter uppercase leading-none">
               {labels.mining} <br /><span className="text-gray-600">{labels.dashboard}</span>
             </h3>
             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30">
@@ -717,13 +850,13 @@ export default function MiningDashboard({
         </div>
 
         {/* KPI Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
           {STATS.map((s) => (
             <motion.div
               key={s.label}
               whileHover={{ y: -4, scale: 1.02 }}
               transition={{ type: "spring", stiffness: 300, damping: 22 }}
-              className="glass-card p-5 group cursor-default"
+              className="glass-card p-4 md:p-5 group cursor-default"
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${s.color}18` }}>
@@ -731,20 +864,20 @@ export default function MiningDashboard({
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{s.label}</span>
               </div>
-              <p className="text-2xl font-black tabular-nums" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-lg md:text-2xl font-black tabular-nums" style={{ color: s.color }}>{s.value}</p>
             </motion.div>
           ))}
         </div>
 
         {/* Main Charts Row */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6">
 
           {/* Hashrate sparkline */}
           <div className="lg:col-span-2 glass-card p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">{labels.networkHashrate}</p>
-                <p className="text-2xl font-black text-[#00f2ff] tabular-nums">{liveHashrate} TH/s</p>
+                <p className="text-2xl font-black text-[#60a5fa] tabular-nums">{liveHashrate} TH/s</p>
               </div>
               <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
                 <Activity size={14} className="animate-pulse" />
@@ -759,7 +892,7 @@ export default function MiningDashboard({
           {/* Weekly earnings bar chart */}
           <div className="glass-card p-6">
             <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">{labels.weeklyEarnings}</p>
-            <p className="text-xl font-black text-[#00f2ff] mb-4">BTC / Day</p>
+            <p className="text-xl font-black text-[#60a5fa] mb-4">BTC / Day</p>
             <div className="h-32">
               <BarChart data={earningsData} />
             </div>
@@ -767,7 +900,7 @@ export default function MiningDashboard({
         </div>
 
         {/* Second Row: Efficiency gauges + Uptime */}
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
 
           {/* Device efficiency gauges */}
           <div className="lg:col-span-2 glass-card p-6">
@@ -802,20 +935,148 @@ export default function MiningDashboard({
           </div>
         </div>
 
+        {/* Stratum Pool Selector & StrataTune AI Consoles */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-6 md:mt-8">
+          {/* Stratum Mining Pool Cluster */}
+          <div className="glass-card p-6 border border-white/10 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-[#60a5fa]/30" />
+            <h4 className="text-sm font-black uppercase tracking-wider mb-2 flex items-center gap-2 text-white">
+              <Globe size={14} className="text-[#60a5fa]" />
+              Stratum Pool Selector
+            </h4>
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-4">
+              Switch stratum pools to reduce stale shares & improve yield efficiency.
+            </p>
+
+            <div className="space-y-3">
+              {[
+                { id: "reykjavik", name: "Reykjavik, Iceland", ping: reykjavikPingHistory[reykjavikPingHistory.length - 1], pings: reykjavikPingHistory, boost: "+2.5% Yield", color: "#60a5fa" },
+                { id: "lulea", name: "Luleå, Sweden", ping: luleaPingHistory[luleaPingHistory.length - 1], pings: luleaPingHistory, boost: "+1.5% Yield", color: "#10b981" },
+                { id: "helsinki", name: "Helsinki, Finland (Base)", ping: helsinkiPingHistory[helsinkiPingHistory.length - 1], pings: helsinkiPingHistory, boost: "Baseline", color: "#3b82f6" }
+              ].map((pool) => {
+                const isSelected = selectedPool === pool.id;
+                return (
+                    <button
+                    key={pool.id}
+                    onClick={() => {
+                      if (setSelectedPool) {
+                        setSelectedPool(pool.id);
+                        localStorage.setItem("appsminers_selected_pool", pool.id);
+                      }
+                    }}
+                    className={`w-full p-3 rounded-xl border flex items-center justify-between text-left transition-all hover:bg-white/5 ${
+                      isSelected 
+                        ? "border-[#60a5fa] bg-[#60a5fa]/5" 
+                        : "border-white/5 bg-transparent"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-[#60a5fa] animate-pulse" : "bg-zinc-700"}`} />
+                        <span className="text-xs font-bold text-white">{pool.name}</span>
+                      </div>
+                      <span className="text-[9px] text-gray-500 font-bold uppercase block mt-1 tracking-wider">
+                        Telemetry Latency: {pool.ping}ms
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <LatencySparkline pings={pool.pings} color={pool.color} />
+                      <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded hidden sm:block ${
+                        isSelected 
+                          ? "bg-[#60a5fa]/20 text-[#60a5fa]" 
+                          : "bg-white/5 text-gray-500"
+                      }`}>
+                        {pool.boost}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* StrataTune AI Console */}
+          <div className="glass-card p-6 border border-white/10 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-[#3b82f6]/30" />
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="text-sm font-black uppercase tracking-wider flex items-center gap-2 text-white">
+                <Cpu size={14} className="text-[#3b82f6]" />
+                StrataTune AI Autopilot
+              </h4>
+              <div 
+                onClick={() => {
+                  const nextVal = !strataTuneActive;
+                  setStrataTuneActive(nextVal);
+                  localStorage.setItem("appsminers_strata_tune_active", nextVal ? "true" : "false");
+                  const now = new Date().toLocaleTimeString();
+                  setAiLogs(logs => [
+                    `[${now}] ${nextVal ? "AI Autopilot enabled and active." : "AI Autopilot deactivated."}`,
+                    ...logs
+                  ]);
+                }}
+                className={`w-10 h-6 rounded-full p-1 cursor-pointer flex items-center transition-colors ${
+                  strataTuneActive ? "bg-[#3b82f6] justify-end" : "bg-zinc-800 justify-start"
+                }`}
+              >
+                <div className={`w-4 h-4 rounded-full ${strataTuneActive ? "bg-black" : "bg-gray-500"}`} />
+              </div>
+            </div>
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-4">
+              Dynamically throttles cluster clock logic based on temperature margins and energy tariffs.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-4">
+              <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 mb-1">Grid Tariff Rate</p>
+                <div className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${gridPrice === "Low" ? "bg-emerald-400 animate-pulse" : "bg-red-500"}`} />
+                  <span className={`text-xs font-black uppercase ${gridPrice === "Low" ? "text-emerald-400" : "text-red-400"}`}>
+                    {gridPrice} Cost (${gridPrice === "Low" ? "0.04" : "0.16"}/kWh)
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 mb-1">AI Recommendation</p>
+                <p className="text-xs font-black uppercase text-white tracking-wider">
+                  {strataTuneActive 
+                    ? (overclocked ? "🚀 Overclock active" : "📉 Eco downclock active")
+                    : "Autopilot standby"
+                  }
+                </p>
+              </div>
+            </div>
+
+            {/* Retro terminal console */}
+            <div className="font-mono text-[9px] text-[#60a5fa]/80 bg-black/60 rounded-xl p-3 h-28 overflow-y-auto space-y-1 mt-3 scrollbar-thin">
+              {aiLogs.length === 0 ? (
+                <div className="text-zinc-600 italic">Console logger initialized. Waiting for autopilot trigger.</div>
+              ) : (
+                aiLogs.map((log, idx) => (
+                  <div key={idx} className="leading-relaxed border-b border-white/2 pb-1 last:border-0">{log}</div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Active Connected Nodes */}
         <div className="mt-12">
           <h4 className="text-xl font-black mb-6 flex items-center gap-2 text-white/80 uppercase tracking-widest">
-            <Cpu size={18} className="text-[#00f2ff]" /> Active Mining Array
+            <Cpu size={18} className="text-[#60a5fa]" /> Active Mining Array
           </h4>
           
           {activeNodes.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {activeNodes.map((node) => (
                 <NodeCardComponent 
                   key={node.id} 
                   node={node} 
                   handleRemoteControl={handleRemoteControl} 
                   nl={nl} 
+                  overclocked={overclocked}
+                  ownedUpgrades={ownedUpgrades}
                 />
               ))}
             </div>
@@ -829,11 +1090,11 @@ export default function MiningDashboard({
         {/* Hardware Inventory & Pending Setups */}
         <div className="mt-12 pt-12 border-t border-white/5">
           <h4 className="text-xl font-black mb-6 flex items-center gap-2 text-white/80 uppercase tracking-widest">
-            <Package size={18} className="text-[#00f2ff]" /> Hardware Inventory & Setups
+            <Package size={18} className="text-[#60a5fa]" /> Hardware Inventory & Setups
           </h4>
           
           {inventoryNodes.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {inventoryNodes.map((node) => (
                 <InventoryCardComponent 
                   key={node.id} 
@@ -854,7 +1115,6 @@ export default function MiningDashboard({
   );
 }
 
-// ─── InventoryCardComponent ──────────────────────────────────
 function InventoryCardComponent({
   node,
   handleSetupNode
@@ -866,16 +1126,31 @@ function InventoryCardComponent({
   const [address, setAddress] = useState("");
   const [physicalKey, setPhysicalKey] = useState("");
 
+  useEffect(() => {
+    if (node.status === "shipping" && node.shipping_started_at) {
+      const elapsed = Date.now() - new Date(node.shipping_started_at).getTime();
+      if (elapsed >= 30000) {
+        handleSetupNode(node.id, { status: "delivered" });
+      } else {
+        const timer = setTimeout(() => {
+          handleSetupNode(node.id, { status: "delivered" });
+        }, 30000 - elapsed);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [node.status, node.shipping_started_at, node.id, handleSetupNode]);
+
   const handleShipSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!address.trim()) {
-      alert("Please enter a shipping address.");
+    const cleanAddress = sanitizeText(address);
+    if (!cleanAddress) {
+      alert("Please enter a valid shipping address.");
       return;
     }
+    setAddress(cleanAddress);
     handleSetupNode(node.id, {
-      hosting_type: "physical",
       status: "shipping",
-      shipping_address: address,
+      shipping_address: cleanAddress,
       shipping_started_at: new Date().toISOString()
     });
     setSetupMode(null);
@@ -883,13 +1158,14 @@ function InventoryCardComponent({
 
   const handleKeySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!physicalKey.trim()) {
-      alert("Please enter a physical key.");
+    const cleanKey = sanitizeAlphanumeric(physicalKey);
+    if (!cleanKey) {
+      alert("Please enter a valid physical key.");
       return;
     }
+    setPhysicalKey(cleanKey);
     handleSetupNode(node.id, {
       status: "activating",
-      setup_configured: true,
       created_at: new Date().toISOString()
     });
     setSetupMode(null);
@@ -903,7 +1179,7 @@ function InventoryCardComponent({
 
   return (
     <div className="glass-card p-6 flex flex-col justify-between border border-white/5 relative overflow-hidden group">
-      <div className="absolute top-0 left-0 w-1 h-full bg-[#00f2ff]/30" />
+      <div className="absolute top-0 left-0 w-1 h-full bg-[#60a5fa]/30" />
       <div>
         <div className="flex justify-between items-start mb-4 pl-2">
           <div>
@@ -912,7 +1188,7 @@ function InventoryCardComponent({
           </div>
           <span className={`px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${
             node.status === "pending_setup" 
-              ? "bg-[#00f2ff]/10 text-[#00f2ff] border border-[#00f2ff]/20" 
+              ? "bg-[#60a5fa]/10 text-[#60a5fa] border border-[#60a5fa]/20" 
               : node.status === "shipping" 
                 ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" 
                 : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
@@ -935,18 +1211,16 @@ function InventoryCardComponent({
                   <button
                     onClick={() => {
                       handleSetupNode(node.id, {
-                        hosting_type: "remote",
                         status: "activating",
-                        setup_configured: true,
                         created_at: new Date().toISOString()
                       });
                     }}
-                    className="py-3 px-2.5 rounded-xl bg-white/5 hover:bg-[#00f2ff]/10 border border-white/10 hover:border-[#00f2ff]/30 text-left transition-all flex flex-col justify-between h-28 group/btn text-white"
+                    className="py-3 px-2.5 rounded-xl bg-white/5 hover:bg-[#60a5fa]/10 border border-white/10 hover:border-[#60a5fa]/30 text-left transition-all flex flex-col justify-between h-28 group/btn text-white"
                   >
-                    <Cloud size={18} className="text-[#00f2ff]" />
+                    <Cloud size={18} className="text-[#60a5fa]" />
                     <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider block">Remote Hosting</span>
-                      <span className="text-[8px] font-bold text-gray-500 block leading-tight mt-1">Instant deploy. 15% surcharge.</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider block">Rent Cloud Rig</span>
+                      <span className="text-[8px] font-bold text-gray-500 block leading-tight mt-1">Instant deploy. 15% lease fee.</span>
                     </div>
                   </button>
                   <button

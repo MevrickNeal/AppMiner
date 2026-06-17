@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useTranslation } from "@/context/LanguageContext";
+import { supabase } from "@/lib/supabase";
+import { sanitizeText, sanitizeAlphanumeric } from "@/lib/sanitize";
 
 // Localized Wallet Dictionary
 const WALLET_I18N: Record<string, any> = {
@@ -329,34 +331,48 @@ const WALLET_I18N: Record<string, any> = {
 };
 
 // Fake balance bar
-function BalanceMeter({ hot, cold, labels }: { hot: number; cold: number; labels: any }) {
-  const total = hot + cold;
-  const hotPct = (hot / total) * 100;
+function BalanceMeter({ hot, cold, staked = 0, labels }: { hot: number; cold: number; staked?: number; labels: any }) {
+  const total = hot + cold + staked;
+  const hotPct = total > 0 ? (hot / total) * 100 : 0;
+  const stakedPct = total > 0 ? (staked / total) * 100 : 0;
+  const coldPct = total > 0 ? (cold / total) * 100 : 0;
   return (
     <div className="space-y-3">
       <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-gray-500">
         <span>{labels.portfolioAllocation}</span>
-        <span>{total.toFixed(4)} BTC Total</span>
+        <span>{total.toFixed(8)} BTC Total</span>
       </div>
-      <div className="relative h-3 rounded-full bg-white/5 overflow-hidden">
+      <div className="relative h-3 rounded-full bg-white/5 overflow-hidden flex">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${hotPct}%` }}
           transition={{ duration: 1, ease: "easeOut" }}
-          className="absolute left-0 top-0 h-full rounded-l-full"
-          style={{ background: "linear-gradient(to right, #f97316, #fb923c)" }}
+          className="h-full"
+          style={{ background: "linear-gradient(to right, #2563eb, #3b82f6)" }}
         />
+        {staked > 0 && (
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${stakedPct}%` }}
+            transition={{ duration: 1, ease: "easeOut", delay: 0.1 }}
+            className="h-full border-l border-r border-black/20"
+            style={{ background: "linear-gradient(to right, #10b981, #34d399)" }}
+          />
+        )}
         <motion.div
           initial={{ width: 0 }}
-          animate={{ width: `${100 - hotPct}%` }}
+          animate={{ width: `${coldPct}%` }}
           transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-          className="absolute right-0 top-0 h-full rounded-r-full"
-          style={{ background: "linear-gradient(to left, #00f2ff, #22d3ee)" }}
+          className="h-full flex-grow"
+          style={{ background: "linear-gradient(to left, #3b82f6, #60a5fa)" }}
         />
       </div>
-      <div className="flex justify-between text-[10px] font-black text-gray-500">
-        <span className="text-orange-400">🔥 {hotPct.toFixed(0)}% {labels.hotWalletLabel}</span>
-        <span className="text-[#00f2ff]">❄️ {(100 - hotPct).toFixed(0)}% {labels.coldStorageLabel}</span>
+      <div className="flex justify-between text-[9px] font-black text-gray-500 flex-wrap gap-2">
+        <span className="text-[#60a5fa]">🔥 {hotPct.toFixed(0)}% {labels.hotWalletLabel} ({hot.toFixed(5)} BTC)</span>
+        {staked > 0 && (
+          <span className="text-emerald-400">⚡ {stakedPct.toFixed(0)}% Staked ({staked.toFixed(5)} BTC)</span>
+        )}
+        <span className="text-[#60a5fa]">❄️ {coldPct.toFixed(0)}% {labels.coldStorageLabel} ({cold.toFixed(5)} BTC)</span>
       </div>
     </div>
   );
@@ -365,11 +381,15 @@ function BalanceMeter({ hot, cold, labels }: { hot: number; cold: number; labels
 export default function WalletServices({ 
   btcPrice = 64250,
   usdBalance,
-  setUsdBalance
+  setUsdBalance,
+  stakeMultiplier = 0.0,
+  setStakeMultiplier
 }: { 
   btcPrice?: number;
   usdBalance?: number;
   setUsdBalance?: (val: number) => void;
+  stakeMultiplier?: number;
+  setStakeMultiplier?: (val: number) => void;
 }) {
   const { language, isRtl } = useTranslation();
   const code = language.code;
@@ -383,10 +403,146 @@ export default function WalletServices({
   const [usbStep, setUsbStep] = useState<"idle" | "verifying" | "success" | "error">("idle");
   const [vaultUnlocked, setVaultUnlocked] = useState(false);
 
+  // DeFi Staking state
+  const [stakedBtc, setStakedBtc] = useState<number>(0);
+  const [stakeDuration, setStakeDuration] = useState<number>(30);
+  const [stakeExpiresAt, setStakeExpiresAt] = useState<number>(0);
+  const [stakeInput, setStakeInput] = useState<string>("");
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+
+  useEffect(() => {
+    try {
+      const savedStake = localStorage.getItem("appsminers_btc_stake");
+      if (savedStake) {
+        const parsed = JSON.parse(savedStake);
+        if (Date.now() < parsed.expiresAt) {
+          setStakedBtc(parsed.stakedBtc);
+          setStakeDuration(parsed.durationDays);
+          setStakeExpiresAt(parsed.expiresAt);
+          setTimeLeft(Math.max(0, Math.ceil((parsed.expiresAt - Date.now()) / 1000)));
+        } else {
+          localStorage.removeItem("appsminers_btc_stake");
+          if (setStakeMultiplier) setStakeMultiplier(0);
+        }
+      }
+    } catch (e) {}
+  }, [setStakeMultiplier]);
+
+  useEffect(() => {
+    if (stakedBtc <= 0 || stakeExpiresAt <= 0) return;
+    const interval = setInterval(() => {
+      const rem = Math.max(0, Math.ceil((stakeExpiresAt - Date.now()) / 1000));
+      setTimeLeft(rem);
+      if (rem <= 0) {
+        handleReleaseStake();
+        clearInterval(interval);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [stakedBtc, stakeExpiresAt]);
+
+  const handleReleaseStake = async (forced = false) => {
+    const targetBtc = forced ? (stakedBtc > 0 ? stakedBtc : 0.001) : stakedBtc;
+    if (targetBtc <= 0) return;
+    const releaseUsd = targetBtc * btcPrice;
+    const nextUsd = (usdBalance || 0) + releaseUsd;
+    
+    localStorage.removeItem("appsminers_btc_stake");
+    setStakedBtc(0);
+    setStakeExpiresAt(0);
+    setTimeLeft(0);
+    if (setUsdBalance) setUsdBalance(nextUsd);
+    localStorage.setItem("appsminers_usd_balance", nextUsd.toFixed(2));
+    if (setStakeMultiplier) setStakeMultiplier(0);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase
+          .from("wallets")
+          .update({ hot_wallet_balance: nextUsd, updated_at: new Date().toISOString() })
+          .eq("user_id", session.user.id);
+      }
+    } catch (e) {
+      console.warn("Failed to persist release to DB:", e);
+    }
+  };
+
+  const handleStakeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = parseFloat(stakeInput);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid BTC amount to stake.");
+      return;
+    }
+    
+    const hotBtc = (usdBalance || 0) / btcPrice;
+    if (amount > hotBtc) {
+      alert("Insufficient BTC in hot wallet to complete staking.");
+      return;
+    }
+
+    const stakedUsd = amount * btcPrice;
+    const nextUsd = (usdBalance || 0) - stakedUsd;
+
+    let multiplier = 0;
+    if (stakeDuration === 30) multiplier = 0.05;
+    else if (stakeDuration === 90) multiplier = 0.12;
+    else if (stakeDuration === 365) multiplier = 0.30;
+
+    const expiresAt = Date.now() + stakeDuration * 24 * 60 * 60 * 1000;
+
+    const stakeMetadata = {
+      stakedBtc: amount,
+      durationDays: stakeDuration,
+      expiresAt: expiresAt,
+      boost: multiplier
+    };
+
+    localStorage.setItem("appsminers_btc_stake", JSON.stringify(stakeMetadata));
+    setStakedBtc(amount);
+    setStakeExpiresAt(expiresAt);
+    setTimeLeft(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)));
+    setStakeInput("");
+
+    if (setUsdBalance) setUsdBalance(nextUsd);
+    localStorage.setItem("appsminers_usd_balance", nextUsd.toFixed(2));
+    if (setStakeMultiplier) setStakeMultiplier(multiplier);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase
+          .from("wallets")
+          .update({ hot_wallet_balance: nextUsd, updated_at: new Date().toISOString() })
+          .eq("user_id", session.user.id);
+      }
+    } catch (dbErr) {
+      console.warn("Failed to persist stake to DB:", dbErr);
+    }
+  };
+
+  const formatTimeLeft = (sec: number) => {
+    if (sec <= 0) return "00d:00h:00m:00s";
+    const d = Math.floor(sec / (24 * 3600));
+    const h = Math.floor((sec % (24 * 3600)) / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${d.toString().padStart(2, "0")}d : ${h.toString().padStart(2, "0")}h : ${m.toString().padStart(2, "0")}m : ${s.toString().padStart(2, "0")}s`;
+  };
+
+  // Hot Wallet transaction states
+  const [showHotModal, setShowHotModal] = useState(false);
+  const [hotMode, setHotMode] = useState<"send" | "receive">("send");
+  const [targetAddress, setTargetAddress] = useState("");
+  const [transferAmount, setTransferAmount] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [txSuccess, setTxSuccess] = useState<string | null>(null);
+
   // Dynamic values
   const activeIcon = activeWallet === "hot" ? Flame : Snowflake;
-  const activeAccentColor = activeWallet === "hot" ? "#f97316" : "#00f2ff";
-  const activeGlowColor = activeWallet === "hot" ? "rgba(249,115,22,0.15)" : "rgba(0,242,255,0.12)";
+  const activeAccentColor = activeWallet === "hot" ? "#2563eb" : "#60a5fa";
+  const activeGlowColor = activeWallet === "hot" ? "rgba(37,99,235,0.15)" : "rgba(96,165,250,0.12)";
   const activeLabel = activeWallet === "hot" ? labels.hotWalletLabel : labels.coldStorageLabel;
   
   const activeSubtitle = activeWallet === "hot" 
@@ -432,8 +588,9 @@ export default function WalletServices({
   }, [showUsbModal, usbStep]);
 
   const handleInputChange = (val: string) => {
-    setTypedKey(val);
-    if (val.trim().startsWith("AppsMiners-PHYSICAL-KEY-") || val.trim().startsWith("AppsMiners-ATTINY85-ColdWallet-KEY-")) {
+    const cleanVal = sanitizeAlphanumeric(val);
+    setTypedKey(cleanVal);
+    if (cleanVal.trim().startsWith("AppsMiners-PHYSICAL-KEY-") || cleanVal.trim().startsWith("AppsMiners-ATTINY85-ColdWallet-KEY-")) {
       setUsbStep("verifying");
       const timer = setTimeout(() => {
         setUsbStep("success");
@@ -458,12 +615,12 @@ export default function WalletServices({
   };
 
   return (
-    <section className="py-24 bg-[#050505] text-white border-t border-white/5" dir={isRtl ? "rtl" : "ltr"}>
+    <section className="py-24 bg-[#071028] text-white border-t border-white/5" dir={isRtl ? "rtl" : "ltr"}>
       <div className="max-w-[1400px] mx-auto px-6">
 
         {/* Header */}
         <div className="mb-14">
-          <h2 className="text-[10px] font-black tracking-[0.3em] text-[#00f2ff] uppercase mb-4">{labels.assetSecurity}</h2>
+          <h2 className="text-[10px] font-black tracking-[0.3em] text-[#60a5fa] uppercase mb-4">{labels.assetSecurity}</h2>
           <div className="flex flex-col md:flex-row justify-between items-end gap-6">
             <h3 className="text-4xl md:text-6xl font-black tracking-tighter uppercase leading-none">
               {labels.hybrid} <br /><span className="text-gray-600">{labels.walletSystem}</span>
@@ -485,9 +642,9 @@ export default function WalletServices({
               <button
                 onClick={() => setActiveWallet("hot")}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 ${
-                  activeWallet === "hot" ? "text-black" : "text-gray-600 hover:text-gray-400"
+                  activeWallet === "hot" ? "text-white" : "text-gray-600 hover:text-gray-400"
                 }`}
-                style={activeWallet === "hot" ? { backgroundColor: "#f97316" } : {}}
+                style={activeWallet === "hot" ? { backgroundColor: "#2563eb" } : {}}
               >
                 <Flame size={14} />
                 {labels.hotWalletLabel}
@@ -497,7 +654,7 @@ export default function WalletServices({
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all duration-300 ${
                   activeWallet === "cold" ? "text-black" : "text-gray-600 hover:text-gray-400"
                 }`}
-                style={activeWallet === "cold" ? { backgroundColor: "#00f2ff" } : {}}
+                style={activeWallet === "cold" ? { backgroundColor: "#60a5fa" } : {}}
               >
                 <Snowflake size={14} />
                 {labels.coldStorageLabel}
@@ -518,7 +675,7 @@ export default function WalletServices({
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${activeAccentColor}22` }}>
-                      {activeWallet === "hot" ? <Flame size={16} className="text-orange-500" /> : <Snowflake size={16} className="text-[#00f2ff]" />}
+                      {activeWallet === "hot" ? <Flame size={16} className="text-orange-500" /> : <Snowflake size={16} className="text-[#60a5fa]" />}
                     </div>
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">{activeLabel}</p>
@@ -571,7 +728,8 @@ export default function WalletServices({
                         alert("Cold Vault accessed. Deep storage configurations authorized.");
                       }
                     } else {
-                      alert("Hot wallet accessed. Daily transactions are operational.");
+                      setShowHotModal(true);
+                      setHotMode("send");
                     }
                   }}
                   className="w-full py-3.5 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
@@ -584,42 +742,170 @@ export default function WalletServices({
 
             {/* Allocation meter */}
             <div className="glass-card p-5">
-              <BalanceMeter hot={4.2831} cold={38.921} labels={labels} />
+              <BalanceMeter hot={hotBtc} cold={38.921} staked={stakedBtc} labels={labels} />
             </div>
           </div>
 
           {/* Right panel — features + security */}
           <div className="lg:col-span-3 flex flex-col gap-5">
 
-            {/* Feature list */}
+            {/* Feature list or DeFi Staking Vault */}
             <AnimatePresence mode="wait">
-              <motion.div
-                key={`feat-${activeWallet}`}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="glass-card p-8 flex-1"
-              >
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3">{activeLabel} — Features</p>
-                <p className="text-gray-400 leading-relaxed mb-8 text-sm">{activeDesc}</p>
-                <ul className="space-y-4">
-                  {activeFeatures.map((f: string, i: number) => (
-                    <motion.li
-                      key={f}
-                      initial={{ opacity: 0, x: 16 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.07, duration: 0.3 }}
-                      className="flex items-center gap-3"
-                    >
-                      <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `${activeAccentColor}22` }}>
-                        <CheckCircle2 size={12} style={{ color: activeAccentColor }} />
+              {activeWallet === "cold" && vaultUnlocked ? (
+                <motion.div
+                  key="cold-staking-vault"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="glass-card p-8 flex-1 border border-emerald-500/10 relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/2 rounded-full blur-2xl pointer-events-none" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-3">❄️ DeFi Time-Lock Staking Vault</p>
+                  <h4 className="text-lg font-black uppercase tracking-tight text-white mb-2">Maximize remote rig efficiency</h4>
+                  
+                  {stakedBtc > 0 ? (
+                    // Staked State UI
+                    <div className="space-y-6 mt-6">
+                      <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl flex items-center justify-between">
+                        <div>
+                          <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest block">Active Staking Contract</span>
+                          <span className="text-sm font-mono text-white font-black">{stakedBtc.toFixed(8)} BTC</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest block">Yield Multiplier Boost</span>
+                          <span className="text-sm font-black text-emerald-400">+{stakeDuration === 30 ? "5%" : stakeDuration === 90 ? "12%" : "30%"} Yield</span>
+                        </div>
                       </div>
-                      <span className="text-sm font-bold text-gray-300">{f}</span>
-                    </motion.li>
-                  ))}
-                </ul>
-              </motion.div>
+
+                      <div className="p-6 bg-black/40 border border-white/5 rounded-2xl text-center space-y-3">
+                        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest block">Time Locked Remaining</span>
+                        <div className="text-2xl font-black font-mono text-[#60a5fa] tracking-wider">
+                          {formatTimeLeft(timeLeft)}
+                        </div>
+                        <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden mt-2">
+                          <div 
+                            className="bg-emerald-500 h-full transition-all duration-1000"
+                            style={{ 
+                              width: `${(timeLeft / (stakeDuration * 24 * 3600)) * 100}%` 
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => handleReleaseStake(false)}
+                          disabled={timeLeft > 0}
+                          className="flex-1 py-3 bg-emerald-500 disabled:bg-zinc-800 text-black disabled:text-zinc-500 font-black uppercase tracking-widest text-xs rounded-xl transition-all disabled:cursor-not-allowed"
+                        >
+                          Reclaim Staked BTC
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => handleReleaseStake(true)}
+                          className="py-3 px-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 font-black uppercase tracking-widest text-[9px] rounded-xl transition-all"
+                          title="Fills expiration immediately for testing"
+                        >
+                          ⚡ Force Expire (Dev Tool)
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // Configuration State UI
+                    <form onSubmit={handleStakeSubmit} className="space-y-6 mt-6">
+                      <p className="text-xs text-gray-400 leading-relaxed">
+                        Stake a portion of your BTC holdings in an immutable smart contract lock. Vaulting your liquid capital increases your remote mining rigs' hashing yield.
+                      </p>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { days: 30, boost: "+5% Boost" },
+                          { days: 90, boost: "+12% Boost" },
+                          { days: 365, boost: "+30% Boost" }
+                        ].map((plan) => (
+                          <button
+                            key={plan.days}
+                            type="button"
+                            onClick={() => setStakeDuration(plan.days)}
+                            className={`p-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${
+                              stakeDuration === plan.days 
+                                ? "border-emerald-500 bg-emerald-500/5 text-emerald-400" 
+                                : "border-white/5 bg-transparent text-gray-500 hover:text-white"
+                            }`}
+                          >
+                            <span className="text-xs font-black">{plan.days} Days</span>
+                            <span className="text-[8px] font-black uppercase tracking-wider">{plan.boost}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-[9px] font-black text-gray-500 uppercase tracking-widest">
+                          <span>Amount to Stake</span>
+                          <span>Available: {hotBtc.toFixed(8)} BTC</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            step="0.00000001"
+                            required
+                            max={hotBtc}
+                            placeholder="0.00000000"
+                            value={stakeInput}
+                            onChange={(e) => setStakeInput(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 pr-16 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setStakeInput(hotBtc.toFixed(8))}
+                            className="absolute right-4 top-2 px-2.5 py-1 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500 hover:text-black text-[9px] font-black uppercase tracking-wider transition-colors"
+                          >
+                            Max
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-widest text-xs rounded-xl transition-all hover:scale-[1.01] flex items-center justify-center gap-2"
+                      >
+                        <Lock size={14} /> Authorize Staking Contract
+                      </button>
+                    </form>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={`feat-${activeWallet}`}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="glass-card p-8 flex-1"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3">{activeLabel} — Features</p>
+                  <p className="text-gray-400 leading-relaxed mb-8 text-sm">{activeDesc}</p>
+                  <ul className="space-y-4">
+                    {activeFeatures.map((f: string, i: number) => (
+                      <motion.li
+                        key={f}
+                        initial={{ opacity: 0, x: 16 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.07, duration: 0.3 }}
+                        className="flex items-center gap-3"
+                      >
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `${activeAccentColor}22` }}>
+                          <CheckCircle2 size={12} style={{ color: activeAccentColor }} />
+                        </div>
+                        <span className="text-sm font-bold text-gray-300">{f}</span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </motion.div>
+              )}
             </AnimatePresence>
 
             {/* Security layers */}
@@ -636,7 +922,7 @@ export default function WalletServices({
                       transition={{ duration: 0.2 }}
                       className="p-4 rounded-2xl bg-white/5 border border-white/8 cursor-default"
                     >
-                      <Icon size={18} className="text-[#00f2ff] mb-2" />
+                      <Icon size={18} className="text-[#60a5fa] mb-2" />
                       <p className="text-xs font-black text-white mb-0.5">{l.label}</p>
                       <p className="text-[10px] text-gray-600">{l.desc}</p>
                     </motion.div>
@@ -655,7 +941,7 @@ export default function WalletServices({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="relative w-full max-w-md bg-[#070707] border border-white/10 rounded-3xl p-8 overflow-hidden text-center"
+                className="relative w-full max-w-md bg-[#091433] border border-white/10 rounded-3xl p-8 overflow-hidden text-center"
               >
                 {/* Close Button */}
                 <button
@@ -687,7 +973,7 @@ export default function WalletServices({
                         value={typedKey}
                         onChange={(e) => handleInputChange(e.target.value)}
                         placeholder="Waiting for physical key input..."
-                        className="w-full bg-black/60 border border-white/10 rounded-xl py-3.5 px-4 text-center font-mono text-xs text-[#00f2ff] focus:outline-none focus:border-[#00f2ff]/60 placeholder:text-zinc-700 transition-colors"
+                        className="w-full bg-black/60 border border-white/10 rounded-xl py-3.5 px-4 text-center font-mono text-xs text-[#60a5fa] focus:outline-none focus:border-[#60a5fa]/60 placeholder:text-zinc-700 transition-colors"
                         autoComplete="off"
                       />
                       <p className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">
@@ -726,7 +1012,7 @@ export default function WalletServices({
                       />
                     </div>
                     <div>
-                      <h4 className="text-lg font-black uppercase tracking-tight text-[#00f2ff] mb-2">
+                      <h4 className="text-lg font-black uppercase tracking-tight text-[#60a5fa] mb-2">
                         Verifying Hardware...
                       </h4>
                       <p className="text-xs text-gray-500 leading-relaxed px-4">
@@ -739,7 +1025,7 @@ export default function WalletServices({
                         initial={{ width: 0 }}
                         animate={{ width: "100%" }}
                         transition={{ duration: 2, ease: "easeInOut" }}
-                        className="h-full bg-[#00f2ff]"
+                        className="h-full bg-[#60a5fa]"
                       />
                     </div>
                   </div>
@@ -769,6 +1055,276 @@ export default function WalletServices({
                     </button>
                   </div>
                 )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Hot Wallet Transaction Modal */}
+        <AnimatePresence>
+          {showHotModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-md bg-[#091433] border border-white/10 rounded-3xl p-8 overflow-hidden text-left"
+              >
+                {/* Close Button */}
+                <button
+                  onClick={() => {
+                    setShowHotModal(false);
+                    setTxSuccess(null);
+                    setTransferAmount("");
+                    setTargetAddress("");
+                  }}
+                  className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
+                >
+                  <X size={18} />
+                </button>
+
+                <div className="space-y-6">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
+                    <Flame size={24} />
+                  </div>
+                  
+                  <div className="text-center">
+                    <h4 className="text-lg font-black uppercase tracking-tight text-white mb-1">
+                      Hot Wallet Operations
+                    </h4>
+                    <p className="text-xs text-gray-500 font-mono">
+                      Balance: ${localUsd.toFixed(2)} USD
+                    </p>
+                  </div>
+
+                  {/* Mode Tab Selector */}
+                  {!txSuccess && (
+                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHotMode("send");
+                          setTransferAmount("");
+                        }}
+                        className={`flex-1 py-2 text-center text-xs font-black uppercase tracking-wider rounded-lg transition-colors ${
+                          hotMode === "send" ? "bg-blue-600 text-white font-bold" : "text-gray-400 hover:text-white"
+                        }`}
+                      >
+                        Send BTC
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHotMode("receive");
+                          setTransferAmount("");
+                        }}
+                        className={`flex-1 py-2 text-center text-xs font-black uppercase tracking-wider rounded-lg transition-colors ${
+                          hotMode === "receive" ? "bg-blue-600 text-white font-bold" : "text-gray-400 hover:text-white"
+                        }`}
+                      >
+                        Deposit / Receive
+                      </button>
+                    </div>
+                  )}
+
+                  {txSuccess ? (
+                    // Success View
+                    <div className="space-y-6 text-center py-4">
+                      <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                        <CheckCircle2 size={24} />
+                      </div>
+                      <div>
+                        <h5 className="text-sm font-black text-white uppercase tracking-wider mb-2">
+                          Transaction Successful
+                        </h5>
+                        <p className="text-xs text-gray-400 leading-relaxed px-4">
+                          {hotMode === "send" 
+                            ? `Successfully transferred funds to address ${targetAddress.slice(0, 8)}...`
+                            : "Sandbox deposit simulated successfully and credit added."
+                          }
+                        </p>
+                        <p className="text-[10px] text-blue-400 font-mono mt-3 break-all">
+                          TXID: {txSuccess}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowHotModal(false);
+                          setTxSuccess(null);
+                          setTransferAmount("");
+                          setTargetAddress("");
+                        }}
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest text-xs rounded-xl transition-all"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  ) : hotMode === "send" ? (
+                    // Send Form
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const amt = parseFloat(transferAmount);
+                        if (isNaN(amt) || amt <= 0) {
+                          alert("Please enter a valid transfer amount.");
+                          return;
+                        }
+                        if (amt > localUsd) {
+                          alert("Insufficient funds in Hot Wallet balance.");
+                          return;
+                        }
+                        const cleanAddress = sanitizeAlphanumeric(targetAddress);
+                        if (!cleanAddress) {
+                          alert("Please enter a valid destination BTC address.");
+                          return;
+                        }
+                        setTargetAddress(cleanAddress);
+
+                        setIsProcessing(true);
+                        const newBal = localUsd - amt;
+                        
+                        // Update client states
+                        localStorage.setItem("appsminers_usd_balance", newBal.toFixed(2));
+                        if (setUsdBalance) setUsdBalance(newBal);
+
+                        try {
+                          // Update Supabase immediately
+                          const { data: { session } } = await supabase.auth.getSession();
+                          if (session) {
+                            await supabase
+                              .from("wallets")
+                              .update({ hot_wallet_balance: newBal, updated_at: new Date().toISOString() })
+                              .eq("user_id", session.user.id);
+                          }
+                        } catch (dbErr) {
+                          console.warn("Failed to instantly persist wallet balance:", dbErr);
+                        }
+
+                        setIsProcessing(false);
+                        setTxSuccess(Math.random().toString(16).substring(2, 10) + Math.random().toString(16).substring(2, 10));
+                      }}
+                      className="space-y-4"
+                    >
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block">
+                          Destination Bitcoin Address
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. 3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy"
+                          value={targetAddress}
+                          onChange={(e) => setTargetAddress(e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-xs text-white focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block">
+                          Amount (USD)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-3 text-xs text-gray-500 font-bold">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            required
+                            max={localUsd}
+                            placeholder="0.00"
+                            value={transferAmount}
+                            onChange={(e) => setTransferAmount(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-8 pr-4 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isProcessing}
+                        className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 text-white font-black uppercase tracking-widest text-xs rounded-xl transition-all flex items-center justify-center gap-2"
+                      >
+                        {isProcessing ? "Processing Transfer..." : "Authorize & Send BTC"}
+                      </button>
+                    </form>
+                  ) : (
+                    // Deposit Form
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const amt = parseFloat(transferAmount);
+                        if (isNaN(amt) || amt <= 0) {
+                          alert("Please enter a valid deposit amount.");
+                          return;
+                        }
+
+                        setIsProcessing(true);
+                        const newBal = localUsd + amt;
+                        
+                        // Update client states
+                        localStorage.setItem("appsminers_usd_balance", newBal.toFixed(2));
+                        if (setUsdBalance) setUsdBalance(newBal);
+
+                        try {
+                          // Update Supabase immediately
+                          const { data: { session } } = await supabase.auth.getSession();
+                          if (session) {
+                            await supabase
+                              .from("wallets")
+                              .update({ hot_wallet_balance: newBal, updated_at: new Date().toISOString() })
+                              .eq("user_id", session.user.id);
+                          }
+                        } catch (dbErr) {
+                          console.warn("Failed to instantly persist wallet balance:", dbErr);
+                        }
+
+                        setIsProcessing(false);
+                        setTxSuccess("sandbox-dep-" + Math.random().toString(16).substring(2, 10));
+                      }}
+                      className="space-y-4"
+                    >
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center gap-3">
+                        <div className="w-32 h-32 bg-white rounded-xl p-2 flex items-center justify-center relative overflow-hidden">
+                          {/* Simulated QR Code */}
+                          <div className="w-full h-full bg-black flex flex-wrap p-1 gap-1">
+                            {Array.from({ length: 64 }).map((_, i) => (
+                              <div key={i} className={`w-3.5 h-3.5 rounded-sm ${((i % 2 === 0 && i % 3 === 0) || i < 12 || i > 52) ? "bg-white" : "bg-black"}`} />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-gray-400 font-mono select-all text-center break-all px-4">
+                          Address: 3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block">
+                          Simulate Deposit Amount (USD)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-3 text-xs text-gray-500 font-bold">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            required
+                            placeholder="50.00"
+                            value={transferAmount}
+                            onChange={(e) => setTransferAmount(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-8 pr-4 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isProcessing}
+                        className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 text-white font-black uppercase tracking-widest text-xs rounded-xl transition-all flex items-center justify-center gap-2"
+                      >
+                        {isProcessing ? "Processing Deposit..." : "Simulate Sandbox Deposit"}
+                      </button>
+                    </form>
+                  )}
+                </div>
               </motion.div>
             </div>
           )}

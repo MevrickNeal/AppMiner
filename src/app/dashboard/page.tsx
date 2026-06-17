@@ -18,7 +18,7 @@ import SupportView from "@/components/dashboard/SupportView";
 import ShopView from "@/components/dashboard/ShopView";
 import { useTranslation } from "@/context/LanguageContext";
 import { supabase } from "@/lib/supabase";
-import { syncMiningEarnings } from "@/app/actions";
+import { syncMiningEarnings, collectEarnings } from "@/app/actions";
 
 
 const DASH_LOCAL_I18N: Record<string, Record<string, string>> = {
@@ -324,6 +324,11 @@ export default function Dashboard() {
   const router = useRouter();
   const { language, t, isRtl } = useTranslation();
   const [activeTab, setActiveTab] = useState<"overview" | "mining" | "wallet" | "settings" | "admin" | "purchases" | "support" | "shop">("overview");
+  const [showOfflineEarnings, setShowOfflineEarnings] = useState(false);
+  const [offlineEarningsAmount, setOfflineEarningsAmount] = useState(0);
+  const [isCollecting, setIsCollecting] = useState(false);
+  const [uncollectedEarnings, setUncollectedEarnings] = useState(0);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState("");
   const [userId, setUserId] = useState("");
@@ -372,7 +377,13 @@ export default function Dashboard() {
   const [usdBalance, setUsdBalance] = useState(100.00);
   const [nodesList, setNodesList] = useState<any[]>([]);
   const [ownedUpgrades, setOwnedUpgrades] = useState<string[]>([]);
-  const [offlineEarningsAlert, setOfflineEarningsAlert] = useState<{ earnings: number; elapsedHours: number } | null>(null);
+  const [settings, setSettings] = useState({
+    twoFactorAuth: true,
+    autoSweepCold: true,
+    realtimeAlerts: false
+  });
+  const [selectedPool, setSelectedPool] = useState<string>("helsinki");
+  const [stakeMultiplier, setStakeMultiplier] = useState<number>(0.0);
 
   const code = language.code;
   const l = DASH_LOCAL_I18N[code] || DASH_LOCAL_I18N.EN;
@@ -414,47 +425,65 @@ export default function Dashboard() {
         
         const upgrades = await reloadUpgrades();
 
+        const localPool = localStorage.getItem("appsminers_selected_pool") || "helsinki";
+        setSelectedPool(localPool);
+
+        let localStakeMult = 0.0;
+        try {
+          const stakeStr = localStorage.getItem("appsminers_btc_stake");
+          if (stakeStr) {
+            const stakeData = JSON.parse(stakeStr);
+            if (Date.now() < stakeData.expiresAt) {
+              const dur = stakeData.durationDays;
+              if (dur === 30) localStakeMult = 0.05;
+              else if (dur === 90) localStakeMult = 0.12;
+              else if (dur === 365) localStakeMult = 0.30;
+            }
+          }
+        } catch (e) {}
+        setStakeMultiplier(localStakeMult);
+
         const { data: { session }, error } = await supabase.auth.getSession();
         if (session) {
           setUserId(session.user.id);
+          setSessionToken(session.access_token);
           setUserEmail(session.user?.email || "operator@appsminers.com");
 
           const token = session.access_token;
           const res = await syncMiningEarnings(
             token,
             overclocked,
-            systemActive
+            systemActive,
+            localPool,
+            localStakeMult
           );
 
           if (res && res.success && typeof res.newBalance === "number" && typeof res.earnings === "number" && typeof res.elapsedHours === "number") {
-            if (res.earnings > 0.0001 && res.elapsedHours >= 0.0083) { // Offline for >= 30 seconds
-              setOfflineEarningsAlert({ earnings: res.earnings, elapsedHours: res.elapsedHours });
-            }
             setUsdBalance(res.newBalance);
             localStorage.setItem("appsminers_usd_balance", res.newBalance.toFixed(2));
             setNodesList(res.updatedNodes);
+            // Show offline earnings popup if user was away and earned something
+            if (res.earnings > 0.01 && res.elapsedHours >= 0.5) {
+              setOfflineEarningsAmount(res.earnings);
+              setUncollectedEarnings(res.earnings);
+              setShowOfflineEarnings(true);
+            }
           } else {
-            console.warn("Server action offline earnings sync failed, using client-side fallback:", res?.error);
+            // Server sync failed — NEVER write to balance in this path.
+            // The server already refused to overwrite if it detected an anomaly.
+            // Just restore localStorage value and load nodes from DB.
+            console.warn("Server sync failed, preserving client state:", res?.error);
+            const savedBal = localStorage.getItem("appsminers_usd_balance");
+            if (savedBal) {
+              const parsed = parseFloat(savedBal);
+              if (!isNaN(parsed) && parsed > 0) setUsdBalance(parsed);
+            }
+
             const { data: nodesData } = await supabase
               .from("nodes")
               .select("*")
               .eq("user_id", session.user.id)
               .order("created_at", { ascending: false });
-
-            const { data: wallet } = await supabase
-              .from("wallets")
-              .select("hot_wallet_balance")
-              .eq("user_id", session.user.id)
-              .single();
-
-            if (wallet && wallet.hot_wallet_balance !== null) {
-              let dbBal = parseFloat(String(wallet.hot_wallet_balance));
-              if (dbBal === 0 && (!nodesData || nodesData.length === 0) && upgrades.length === 0) {
-                dbBal = 100.00;
-              }
-              setUsdBalance(dbBal);
-              localStorage.setItem("appsminers_usd_balance", dbBal.toFixed(2));
-            }
 
             if (nodesData) {
               const mapped = nodesData.map(n => ({
@@ -464,8 +493,8 @@ export default function Dashboard() {
                 power: n.power,
                 region: n.region,
                 status: n.status,
-                hosting_type: n.hosting_type || "remote",
-                setup_configured: n.setup_configured !== undefined && n.setup_configured !== null ? n.setup_configured : false,
+                hosting_type: n.shipping_address ? "physical" : "remote",
+                setup_configured: n.status !== "pending_setup" && n.status !== "shipping" && n.status !== "delivered",
                 shipping_address: n.shipping_address || null,
                 shipping_started_at: n.shipping_started_at || null,
                 created_at: n.created_at
@@ -534,14 +563,15 @@ export default function Dashboard() {
     const interval = setInterval(async () => {
       const getRate = (name: string): number => {
         const lower = name.toLowerCase();
-        if (lower.includes("t200")) return 0.0005;
-        if (lower.includes("f100")) return 0.00025;
-        if (lower.includes("f50")) return 0.000125;
-        if (lower.includes("starter")) return 0.00006;
-        if (lower.includes("mini")) return 0.00002;
-        if (lower.includes("nano")) return 0.000006;
-        if (lower.includes("pocket")) return 0.000002;
-        return 0.00001;
+        // Proportional rates based on hashrate: 1 TH/s = 0.00000025 USD/s (realistic payback: ~300-500 days)
+        if (lower.includes("t200")) return 0.00005;       // 200 TH/s
+        if (lower.includes("f100")) return 0.000025;      // 100 TH/s
+        if (lower.includes("f50")) return 0.0000125;       // 50 TH/s
+        if (lower.includes("starter")) return 0.00000042;  // 1.68 TH/s
+        if (lower.includes("mini")) return 0.000000125;    // 0.5 TH/s (500 GH/s)
+        if (lower.includes("nano")) return 0.00000001;     // 0.04 TH/s (40 GH/s)
+        if (lower.includes("pocket")) return 0.00000000375; // 0.015 TH/s (15 GH/s)
+        return 0.000000025;
       };
 
       let balanceDiff = 0;
@@ -557,12 +587,20 @@ export default function Dashboard() {
       if (overclocked) {
         multiplier += 0.15;
       }
+      if (selectedPool === "reykjavik") {
+        multiplier += 0.025;
+      } else if (selectedPool === "lulea") {
+        multiplier += 0.015;
+      }
+      if (stakeMultiplier > 0) {
+        multiplier += stakeMultiplier;
+      }
       
       const updatedNodes = nodesList.map(node => {
         const normStatus = node.status ? node.status.toLowerCase() : "";
         if (normStatus === "activating" && node.created_at) {
           const elapsed = Date.now() - new Date(node.created_at).getTime();
-          if (elapsed >= 120000) { // 2 minutes activation delay
+          if (elapsed >= 30000) { // 30 seconds activation delay (aligned with card component)
             nodesChanged = true;
             const updatedNode = { ...node, status: "online" };
             
@@ -599,8 +637,15 @@ export default function Dashboard() {
 
         if (normStatus === "online" && systemActive) {
           const baseRate = getRate(node.productName);
-          // 15% maintenance and energy fee deduction for remote hosting
-          const nodeYield = node.hosting_type === "remote" ? baseRate * 0.85 : baseRate;
+          let yieldFactor = 0.85; // Default 15% lease fee (85% yield)
+          if (ownedUpgrades.includes("geothermal-lease")) {
+            yieldFactor = 0.95; // 5% fee (95% yield)
+          } else if (ownedUpgrades.includes("hydro-lease")) {
+            yieldFactor = 0.92; // 8% fee (92% yield)
+          } else if (ownedUpgrades.includes("wind-lease")) {
+            yieldFactor = 0.90; // 10% fee (90% yield)
+          }
+          const nodeYield = node.hosting_type === "remote" ? baseRate * yieldFactor : baseRate;
           balanceDiff += nodeYield * multiplier;
         }
 
@@ -615,31 +660,40 @@ export default function Dashboard() {
         setUsdBalance(prev => {
           const nextBal = prev + balanceDiff;
           localStorage.setItem("appsminers_usd_balance", nextBal.toFixed(2));
-          
-          if (Date.now() - lastSyncTime >= 15000 && userId) {
-            lastSyncTime = Date.now();
-            supabase
-              .from("wallets")
-              .update({ hot_wallet_balance: nextBal, updated_at: new Date().toISOString() })
-              .eq("user_id", userId)
-              .then();
-          }
           return nextBal;
         });
-      } else {
-        if (Date.now() - lastSyncTime >= 15000 && userId) {
-          lastSyncTime = Date.now();
-          supabase
-            .from("wallets")
-            .update({ updated_at: new Date().toISOString() })
-            .eq("user_id", userId)
-            .then();
-        }
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [nodesList, systemActive, ownedUpgrades, overclocked, userId]);
+  }, [nodesList, systemActive, ownedUpgrades, overclocked, userId, selectedPool, stakeMultiplier]);
+
+  // Periodically save USD balance to database every 15 seconds
+  useEffect(() => {
+    if (!userId || isDemo) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const balStr = localStorage.getItem("appsminers_usd_balance");
+        if (balStr) {
+          const bal = parseFloat(balStr);
+          await supabase
+            .from("wallets")
+            .update({ hot_wallet_balance: bal, updated_at: new Date().toISOString() })
+            .eq("user_id", userId);
+        } else {
+          await supabase
+            .from("wallets")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("user_id", userId);
+        }
+      } catch (err) {
+        console.warn("Failed to auto-sync wallet balance:", err);
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [userId, isDemo]);
 
   const handleSignOut = async () => {
     try {
@@ -668,9 +722,26 @@ export default function Dashboard() {
     setAdminLogs(prev => [`[${now}] EMERGENCY SHUTDOWN TOGGLED. SYSTEM STATUS: ${!systemActive ? "ONLINE" : "SHUT DOWN"}`, ...prev]);
   };
 
-  const triggerSweep = () => {
+  const triggerSweep = async () => {
     const now = new Date().toLocaleTimeString();
     setAdminLogs(prev => [`[${now}] SECURE WALLET SWEEP INITIATED. ALL HOT FUNDS MOVED TO DEEP VAULT`, ...prev]);
+    
+    // Update local balance
+    setUsdBalance(0);
+    localStorage.setItem("appsminers_usd_balance", "0.00");
+    
+    // Update remote balance if online
+    if (userId && !isDemo) {
+      try {
+        await supabase
+          .from("wallets")
+          .update({ hot_wallet_balance: 0, updated_at: new Date().toISOString() })
+          .eq("user_id", userId);
+      } catch (e) {
+        console.error("Failed to sweep database wallet", e);
+      }
+    }
+    
     alert("Force sweep executed successfully. Hot wallets are cleared.");
   };
 
@@ -689,9 +760,9 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#030303] text-white flex flex-col justify-center items-center relative overflow-hidden">
+      <div className="min-h-screen bg-[#060d1f] text-white flex flex-col justify-center items-center relative overflow-hidden">
         {/* Background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#00f2ff]/5 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#60a5fa]/5 rounded-full blur-[120px] pointer-events-none" />
         
         <div className="relative z-10 flex flex-col items-center gap-6">
           <div className="relative w-36 h-36">
@@ -704,7 +775,7 @@ export default function Dashboard() {
             />
           </div>
           <div className="flex flex-col items-center gap-2">
-            <span className="text-xs font-black uppercase tracking-[0.3em] text-[#00f2ff] animate-pulse">
+            <span className="text-xs font-black uppercase tracking-[0.3em] text-[#60a5fa] animate-pulse">
               {l.authenticating}
             </span>
             <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">
@@ -718,9 +789,71 @@ export default function Dashboard() {
 
 
   return (
-    <div className="min-h-screen bg-[#030303] text-white flex flex-col lg:flex-row pb-20 lg:pb-0 overflow-x-hidden" dir={isRtl ? "rtl" : "ltr"}>
+    <div className="min-h-screen bg-[#060d1f] text-white flex flex-col lg:flex-row pb-20 lg:pb-0 overflow-x-hidden" dir={isRtl ? "rtl" : "ltr"}>
+      {/* Offline Earnings Modal */}
+      {showOfflineEarnings && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm bg-[#091433] border border-[#60a5fa]/20 rounded-3xl p-8 text-center shadow-2xl shadow-[#60a5fa]/5">
+            <div className="w-16 h-16 rounded-full bg-[#60a5fa]/10 flex items-center justify-center mx-auto mb-5">
+              <Activity size={32} className="text-[#60a5fa]" />
+            </div>
+            <h3 className="text-lg font-black uppercase tracking-tight text-white mb-2">Welcome Back, Operator</h3>
+            <p className="text-xs text-gray-500 mb-6 leading-relaxed">
+              Your nodes kept mining while you were away. Offline earnings have been credited to your wallet.
+            </p>
+            <div className="p-4 bg-[#60a5fa]/5 border border-[#60a5fa]/10 rounded-2xl mb-6">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">Earnings Collected</p>
+              <p className="text-2xl font-black text-[#60a5fa]">
+                +${offlineEarningsAmount.toFixed(2)} USD
+              </p>
+            </div>
+            <button
+              disabled={isCollecting}
+              onClick={async () => {
+                if (!sessionToken) { setShowOfflineEarnings(false); return; }
+                setIsCollecting(true);
+                try {
+                  const result = await collectEarnings(sessionToken, offlineEarningsAmount);
+                  if (result.success && typeof result.newBalance === "number") {
+                    setUsdBalance(result.newBalance);
+                    localStorage.setItem("appsminers_usd_balance", result.newBalance.toFixed(2));
+                  }
+                } catch (e) {
+                  console.error("Collect failed:", e);
+                }
+                
+                // Close the modal popup immediately so user can see dashboard overview
+                setShowOfflineEarnings(false);
+                setIsCollecting(false);
+
+                // Animate count-up of balance by decrementing uncollectedEarnings to 0
+                const duration = 1000; // 1 second
+                const start = Date.now();
+                const startEarnings = offlineEarningsAmount;
+                const animInterval = setInterval(() => {
+                  const elapsed = Date.now() - start;
+                  const progress = Math.min(elapsed / duration, 1);
+                  // Ease out cubic
+                  const ease = 1 - Math.pow(1 - progress, 3);
+                  const currentUncollected = startEarnings * (1 - ease);
+                  setUncollectedEarnings(currentUncollected);
+                  if (progress === 1) {
+                    clearInterval(animInterval);
+                    setUncollectedEarnings(0);
+                  }
+                }, 16);
+              }}
+              className="w-full py-3.5 rounded-xl bg-[#60a5fa] text-black text-xs font-black uppercase tracking-widest hover:bg-[#60a5fa]/90 disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+            >
+              {isCollecting ? "Collecting..." : "Collect My Earnings"}
+            </button>
+          </div>
+        </div>
+      )}
       {/* Sidebar Navigation (Desktop) */}
-      <aside className="hidden lg:flex w-80 bg-[#070707] border-r border-white/5 flex-col p-6 gap-8 z-20 h-screen sticky top-0">
+      <aside className="hidden lg:flex w-80 border-r border-blue-900/30 flex-col p-6 gap-8 z-20 h-screen sticky top-0"
+        style={{ background: 'linear-gradient(180deg, #071028 0%, #060d1f 100%)' }}
+      >
         {/* Brand Header */}
         <div className="flex items-center gap-3">
           <div className="relative w-9 h-9">
@@ -733,14 +866,14 @@ export default function Dashboard() {
           </div>
           <div>
             <span className="text-lg font-black tracking-tighter text-white block leading-none">AppsMiners</span>
-            <span className="text-[9px] font-bold text-[#00f2ff] tracking-widest uppercase">{t("dashSecuredTerminal")}</span>
+            <span className="text-[9px] font-bold text-[#60a5fa] tracking-widest uppercase">{t("dashSecuredTerminal")}</span>
           </div>
         </div>
 
         {/* User Card */}
-        <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#00f2ff]/10 flex items-center justify-center border border-[#00f2ff]/20">
-            <User size={18} className="text-[#00f2ff]" />
+        <div className="p-4 rounded-2xl bg-blue-900/20 border border-blue-500/15 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#60a5fa]/10 flex items-center justify-center border border-[#60a5fa]/20">
+            <User size={18} className="text-[#60a5fa]" />
           </div>
           <div className="overflow-hidden">
             <h4 className="text-xs font-black text-white truncate">{user.name}</h4>
@@ -754,8 +887,8 @@ export default function Dashboard() {
             onClick={() => setActiveTab("overview")}
             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === "overview" 
-                ? "bg-[#00f2ff] text-black" 
-                : "text-gray-500 hover:text-white hover:bg-white/5"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40" 
+                : "text-blue-300/60 hover:text-white hover:bg-blue-900/30"
             }`}
           >
             <LayoutDashboard size={14} />
@@ -766,8 +899,8 @@ export default function Dashboard() {
             onClick={() => setActiveTab("mining")}
             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === "mining" 
-                ? "bg-[#00f2ff] text-black" 
-                : "text-gray-500 hover:text-white hover:bg-white/5"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40" 
+                : "text-blue-300/60 hover:text-white hover:bg-blue-900/30"
             }`}
           >
             <Cpu size={14} />
@@ -778,8 +911,8 @@ export default function Dashboard() {
             onClick={() => setActiveTab("wallet")}
             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === "wallet" 
-                ? "bg-[#00f2ff] text-black" 
-                : "text-gray-500 hover:text-white hover:bg-white/5"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40" 
+                : "text-blue-300/60 hover:text-white hover:bg-blue-900/30"
             }`}
           >
             <Wallet size={14} />
@@ -790,8 +923,8 @@ export default function Dashboard() {
             onClick={() => setActiveTab("settings")}
             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === "settings" 
-                ? "bg-[#00f2ff] text-black" 
-                : "text-gray-500 hover:text-white hover:bg-white/5"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40" 
+                : "text-blue-300/60 hover:text-white hover:bg-blue-900/30"
             }`}
           >
             <Settings size={14} />
@@ -802,8 +935,8 @@ export default function Dashboard() {
             onClick={() => setActiveTab("shop")}
             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === "shop" 
-                ? "bg-[#00f2ff] text-black" 
-                : "text-gray-500 hover:text-white hover:bg-white/5"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40" 
+                : "text-blue-300/60 hover:text-white hover:bg-blue-900/30"
             }`}
           >
             <ShoppingBag size={14} />
@@ -814,8 +947,8 @@ export default function Dashboard() {
             onClick={() => setActiveTab("purchases")}
             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === "purchases" 
-                ? "bg-[#00f2ff] text-black" 
-                : "text-gray-500 hover:text-white hover:bg-white/5"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40" 
+                : "text-blue-300/60 hover:text-white hover:bg-blue-900/30"
             }`}
           >
             <Package size={14} />
@@ -826,8 +959,8 @@ export default function Dashboard() {
             onClick={() => setActiveTab("support")}
             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
               activeTab === "support" 
-                ? "bg-[#00f2ff] text-black" 
-                : "text-gray-500 hover:text-white hover:bg-white/5"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-900/40" 
+                : "text-blue-300/60 hover:text-white hover:bg-blue-900/30"
             }`}
           >
             <LifeBuoy size={14} />
@@ -849,13 +982,13 @@ export default function Dashboard() {
             </button>
           )}
 
-          <div className="h-[1px] bg-white/5 my-2" />
+          <div className="h-[1px] bg-blue-900/30 my-2" />
 
           <Link
             href="/"
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all text-gray-500 hover:text-white hover:bg-white/5"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all text-blue-300/60 hover:text-white hover:bg-blue-900/30"
           >
-            <Globe size={14} className="text-[#00f2ff]" />
+            <Globe size={14} className="text-[#60a5fa]" />
             Home
           </Link>
         </nav>
@@ -877,14 +1010,17 @@ export default function Dashboard() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 bg-[#030303] overflow-y-auto relative">
+      <main className="flex-1 min-w-0 bg-[#060d1f] overflow-y-auto relative">
         {/* Glow Effects */}
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#00f2ff]/3 rounded-full blur-[100px] pointer-events-none" />
+        {/* Ambient background glows */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(59,130,246,0.07) 0%, transparent 70%)' }} />
+        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] rounded-full blur-[100px] pointer-events-none" style={{ background: 'radial-gradient(ellipse, rgba(96,165,250,0.05) 0%, transparent 70%)' }} />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#60a5fa]/3 rounded-full blur-[100px] pointer-events-none" />
 
         {/* Dashboard Header Banner */}
-        <div className="border-b border-white/5 px-6 py-6 md:px-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#050505]/40 backdrop-blur-md sticky top-0 z-10">
-          <div>
-            <h1 className="text-xl md:text-2xl font-black uppercase tracking-tighter">
+        <div className="border-b border-white/5 px-4 py-4 md:px-8 md:py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-[#071028]/40 backdrop-blur-md sticky top-0 z-10">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg md:text-2xl font-black uppercase tracking-tighter truncate">
               {activeTab === "overview" && t("dashTerminalOverview")}
               {activeTab === "mining" && t("dashMiningProgress")}
               {activeTab === "wallet" && t("dashWalletStatus")}
@@ -894,37 +1030,37 @@ export default function Dashboard() {
               {activeTab === "shop" && "Store & Upgrades"}
               {activeTab === "admin" && l.adminConsole}
             </h1>
-            <p className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wider mt-0.5">
+            <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5 truncate">
               {l.secureSessionId}: <span className="text-white/80 font-mono">session_ams_0994cf8e23b</span>
             </p>
           </div>
           
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 flex-shrink-0">
             <Link 
               href="/" 
-              className="px-3.5 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:border-[#00f2ff]/30 text-white hover:text-[#00f2ff] text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
+              className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:border-[#60a5fa]/30 text-white hover:text-[#60a5fa] text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
             >
-              <Globe size={11} className="text-[#00f2ff]" />
-              Home
+              <Globe size={11} className="text-[#60a5fa]" />
+              <span className="hidden sm:inline">Home</span>
             </Link>
 
-            <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${systemActive ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                {systemActive ? l.networkOnline : "Offline Mode"}
+            <div className="flex items-center gap-1.5">
+              <div className={`h-2 w-2 rounded-full flex-shrink-0 ${systemActive ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest hidden sm:block">
+                {systemActive ? l.networkOnline : "Offline"}
               </span>
             </div>
           </div>
         </div>
 
         {/* Content Wrapper */}
-        <div className="p-6 md:p-10">
+        <div className="p-4 md:p-8">
           {activeTab === "overview" && (
             <div className="space-y-12">
               {/* Summary Cards */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 <div className="glass-card p-6 border border-white/10 relative overflow-hidden group">
-                  <div className="absolute top-0 left-0 h-1 bg-[#00f2ff] w-full transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
+                  <div className="absolute top-0 left-0 h-1 bg-[#60a5fa] w-full transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
                   <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{t("dashAggregateHashrate")}</p>
                   <h3 className="text-3xl font-black text-white">{overclocked ? "478.20 TH/s" : "415.82 TH/s"}</h3>
                   <div className="mt-4 flex items-center gap-2 text-xs text-emerald-400 font-bold">
@@ -935,16 +1071,16 @@ export default function Dashboard() {
                 <div className="glass-card p-6 border border-white/10 relative overflow-hidden group">
                   <div className="absolute top-0 left-0 h-1 bg-amber-500 w-full transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
                   <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{t("dashWalletValue")}</p>
-                  <h3 className="text-3xl font-black text-[#00f2ff]">
-                    ${usdBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                  <h3 className="text-3xl font-black text-[#60a5fa]">
+                    ${(usdBalance - uncollectedEarnings).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
                   </h3>
                   <div className="mt-4 flex items-center justify-between text-xs text-gray-400 font-bold">
                     <span>{(usdBalance / btcPrice).toFixed(8)} BTC total</span>
-                    <span className="text-[10px] text-[#00f2ff]/80 uppercase tracking-wider">LIVE: ${btcPrice.toLocaleString()} / BTC</span>
+                    <span className="text-[10px] text-[#60a5fa]/80 uppercase tracking-wider">LIVE: ${btcPrice.toLocaleString()} / BTC</span>
                   </div>
                 </div>
 
-                <div className="glass-card p-6 border border-white/10 relative overflow-hidden group sm:col-span-2 lg:col-span-1">
+                <div className="glass-card p-6 border border-white/10 relative overflow-hidden group sm:col-span-2 lg:col-span-1 col-span-1">
                   <div className="absolute top-0 left-0 h-1 bg-emerald-500 w-full transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
                   <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">{t("dashActiveClusters")}</p>
                   <h3 className="text-3xl font-black text-white">
@@ -959,13 +1095,13 @@ export default function Dashboard() {
               </div>
 
               {/* Quick links to details */}
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div 
                   onClick={() => setActiveTab("mining")}
-                  className="glass-card p-8 border border-white/5 hover:border-[#00f2ff]/30 cursor-pointer transition-all hover:scale-[1.01] group"
+                  className="glass-card p-8 border border-white/5 hover:border-[#60a5fa]/30 cursor-pointer transition-all hover:scale-[1.01] group"
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-[#00f2ff] group-hover:bg-[#00f2ff]/10 transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-[#60a5fa] group-hover:bg-[#60a5fa]/10 transition-colors">
                       <Cpu size={20} />
                     </div>
                     <ChevronRight size={16} className="text-gray-600 group-hover:text-white transition-colors" />
@@ -976,10 +1112,10 @@ export default function Dashboard() {
 
                 <div 
                   onClick={() => setActiveTab("wallet")}
-                  className="glass-card p-8 border border-white/5 hover:border-[#00f2ff]/30 cursor-pointer transition-all hover:scale-[1.01] group"
+                  className="glass-card p-8 border border-white/5 hover:border-[#60a5fa]/30 cursor-pointer transition-all hover:scale-[1.01] group"
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-[#00f2ff] group-hover:bg-[#00f2ff]/10 transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-[#60a5fa] group-hover:bg-[#60a5fa]/10 transition-colors">
                       <Wallet size={20} />
                     </div>
                     <ChevronRight size={16} className="text-gray-600 group-hover:text-white transition-colors" />
@@ -992,13 +1128,13 @@ export default function Dashboard() {
               {/* Terminal Logs */}
               <div className="glass-card p-6 border border-white/5">
                 <div className="flex items-center gap-2 mb-4 border-b border-white/5 pb-4">
-                  <Terminal size={14} className="text-[#00f2ff]" />
+                  <Terminal size={14} className="text-[#60a5fa]" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{l.securityEventLog}</span>
                 </div>
                 <div className="font-mono text-[11px] text-gray-500 space-y-2">
                   <p><span className="text-gray-700">[22:34:10]</span> {l.log1}</p>
                   <p><span className="text-gray-700">[22:35:12]</span> {l.log2}</p>
-                  <p><span className="text-[#00f2ff]/80">[22:38:00]</span> {l.log3}</p>
+                  <p><span className="text-[#60a5fa]/80">[22:38:00]</span> {l.log3}</p>
                   <p><span className="text-gray-700">[22:38:58]</span> {l.log4}</p>
                 </div>
               </div>
@@ -1007,16 +1143,31 @@ export default function Dashboard() {
 
           {activeTab === "mining" && (
             <div className="space-y-6">
-              <div className="glass-card p-2 border border-white/5 bg-[#050505]/40">
-                <MiningDashboard nodes={nodesList} setNodes={setNodesList} usdBalance={usdBalance} />
+              <div className="glass-card p-2 border border-white/5 bg-[#071028]/40">
+                <MiningDashboard 
+                  nodes={nodesList} 
+                  setNodes={setNodesList} 
+                  usdBalance={usdBalance}
+                  selectedPool={selectedPool}
+                  setSelectedPool={setSelectedPool}
+                  overclocked={overclocked}
+                  setOverclocked={setOverclocked}
+                  ownedUpgrades={ownedUpgrades}
+                />
               </div>
             </div>
           )}
 
           {activeTab === "wallet" && (
             <div className="space-y-6">
-              <div className="glass-card p-2 border border-white/5 bg-[#050505]/40">
-                <WalletServices btcPrice={btcPrice} usdBalance={usdBalance} setUsdBalance={setUsdBalance} />
+              <div className="glass-card p-2 border border-white/5 bg-[#071028]/40">
+                <WalletServices 
+                  btcPrice={btcPrice} 
+                  usdBalance={usdBalance} 
+                  setUsdBalance={setUsdBalance}
+                  stakeMultiplier={stakeMultiplier}
+                  setStakeMultiplier={setStakeMultiplier}
+                />
               </div>
             </div>
           )}
@@ -1032,7 +1183,7 @@ export default function Dashboard() {
           )}
 
           {activeTab === "settings" && (
-            <div className="max-w-2xl space-y-8 py-4">
+            <div className="max-w-2xl w-full space-y-6 md:space-y-8 py-4">
               <div className="glass-card p-8 space-y-6 border border-white/5">
                 <h3 className="text-lg font-black uppercase tracking-tight">{l.operatorPreferences}</h3>
                 
@@ -1042,8 +1193,13 @@ export default function Dashboard() {
                       <p className="text-xs font-bold">{l.twoFactorAuth}</p>
                       <p className="text-[10px] text-gray-500">{l.twoFactorAuthDesc}</p>
                     </div>
-                    <div className="w-10 h-6 bg-[#00f2ff] rounded-full p-1 cursor-pointer flex items-center justify-end">
-                      <div className="w-4 h-4 rounded-full bg-black" />
+                    <div 
+                      onClick={() => setSettings(s => ({ ...s, twoFactorAuth: !s.twoFactorAuth }))}
+                      className={`w-10 h-6 rounded-full p-1 cursor-pointer flex items-center transition-colors ${
+                        settings.twoFactorAuth ? "bg-[#60a5fa] justify-end" : "bg-zinc-800 justify-start"
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full ${settings.twoFactorAuth ? "bg-black" : "bg-gray-500"}`} />
                     </div>
                   </div>
 
@@ -1052,8 +1208,13 @@ export default function Dashboard() {
                       <p className="text-xs font-bold">{l.autoSweepCold}</p>
                       <p className="text-[10px] text-gray-500">{l.autoSweepColdDesc}</p>
                     </div>
-                    <div className="w-10 h-6 bg-[#00f2ff] rounded-full p-1 cursor-pointer flex items-center justify-end">
-                      <div className="w-4 h-4 rounded-full bg-black" />
+                    <div 
+                      onClick={() => setSettings(s => ({ ...s, autoSweepCold: !s.autoSweepCold }))}
+                      className={`w-10 h-6 rounded-full p-1 cursor-pointer flex items-center transition-colors ${
+                        settings.autoSweepCold ? "bg-[#60a5fa] justify-end" : "bg-zinc-800 justify-start"
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full ${settings.autoSweepCold ? "bg-black" : "bg-gray-500"}`} />
                     </div>
                   </div>
 
@@ -1062,8 +1223,13 @@ export default function Dashboard() {
                       <p className="text-xs font-bold">{l.realtimeAlerts}</p>
                       <p className="text-[10px] text-gray-500">{l.realtimeAlertsDesc}</p>
                     </div>
-                    <div className="w-10 h-6 bg-zinc-800 rounded-full p-1 cursor-pointer flex items-center justify-start">
-                      <div className="w-4 h-4 rounded-full bg-gray-500" />
+                    <div 
+                      onClick={() => setSettings(s => ({ ...s, realtimeAlerts: !s.realtimeAlerts }))}
+                      className={`w-10 h-6 rounded-full p-1 cursor-pointer flex items-center transition-colors ${
+                        settings.realtimeAlerts ? "bg-[#60a5fa] justify-end" : "bg-zinc-800 justify-start"
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full ${settings.realtimeAlerts ? "bg-black" : "bg-gray-500"}`} />
                     </div>
                   </div>
                 </div>
@@ -1073,7 +1239,7 @@ export default function Dashboard() {
 
           {activeTab === "purchases" && (
             <div className="space-y-6">
-              <OrderHistoryView />
+              <OrderHistoryView onNavigateToMining={() => setActiveTab("mining")} />
             </div>
           )}
 
@@ -1105,7 +1271,7 @@ export default function Dashboard() {
                       <button 
                         onClick={toggleOverclock}
                         className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-colors ${
-                          overclocked ? "bg-[#00f2ff] text-black" : "bg-white/5 text-gray-400 hover:text-white"
+                          overclocked ? "bg-[#60a5fa] text-black" : "bg-white/5 text-gray-400 hover:text-white"
                         }`}
                       >
                         {overclocked ? "Overclock ON" : "Overclock OFF"}
@@ -1143,7 +1309,7 @@ export default function Dashboard() {
                 {/* DB Integration Telemetry */}
                 <div className="glass-card p-6 border border-white/10">
                   <h3 className="text-sm font-black uppercase tracking-wider mb-6 flex items-center gap-2">
-                    <Database size={16} className="text-[#00f2ff]" />
+                    <Database size={16} className="text-[#60a5fa]" />
                     {l.supabaseStatus}
                   </h3>
                   
@@ -1261,7 +1427,7 @@ export default function Dashboard() {
       </main>
 
       {/* Bottom Navigation (Mobile) */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#0a0a0a]/90 backdrop-blur-xl border-t border-white/10 z-[100] px-4 pb-safe">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-20 bg-[#060d1f]/90 backdrop-blur-xl border-t border-white/10 z-[100] px-4 pb-safe">
         <div className="h-full max-w-md mx-auto flex items-center justify-between">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
@@ -1270,7 +1436,7 @@ export default function Dashboard() {
                 key={item.id}
                 onClick={() => setActiveTab(item.id as any)}
                 className={`flex flex-col items-center justify-center flex-1 h-12 rounded-xl transition-all ${
-                  isActive ? "text-[#00f2ff]" : "text-gray-500 hover:text-gray-300"
+                  isActive ? "text-[#60a5fa]" : "text-gray-500 hover:text-gray-300"
                 }`}
               >
                 <div className="relative">
@@ -1278,7 +1444,7 @@ export default function Dashboard() {
                   {isActive && (
                     <motion.div
                       layoutId="mobile-nav-indicator"
-                      className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#00f2ff]"
+                      className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#60a5fa]"
                     />
                   )}
                 </div>
@@ -1289,44 +1455,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Offline Mining Modal */}
-      <AnimatePresence>
-        {offlineEarningsAlert && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md pointer-events-auto"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card max-w-md w-full p-6 text-center border-[#00f2ff]/20 relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,242,255,0.08)_0%,transparent_70%)]" />
-              <div className="w-16 h-16 rounded-full bg-[#00f2ff]/10 border border-[#00f2ff]/30 flex items-center justify-center mx-auto mb-4 text-[#00f2ff] animate-pulse">
-                <Activity size={28} />
-              </div>
-              <h3 className="text-xs font-black uppercase tracking-[0.25em] text-[#00f2ff] mb-2">Offline Mining Report</h3>
-              <h4 className="text-2xl font-black text-white mb-4">Welcome Back, Operator</h4>
-              <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-                While you were away for <span className="text-white font-bold">{offlineEarningsAlert.elapsedHours.toFixed(1)} hours</span>, your virtual hardware nodes remained online and active.
-              </p>
-              <div className="p-4 rounded-xl bg-white/5 border border-white/10 mb-6">
-                <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-1">Estimated Earnings Mined</span>
-                <span className="text-3xl font-black text-emerald-400">+${offlineEarningsAlert.earnings.toFixed(4)} USD</span>
-              </div>
-              <button
-                onClick={() => setOfflineEarningsAlert(null)}
-                className="w-full py-3 bg-[#00f2ff] hover:bg-[#00e1ec] text-black font-black uppercase tracking-widest text-xs rounded-xl transition-all hover:scale-[1.02]"
-              >
-                Collect Earnings
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
     </div>
   );
 }

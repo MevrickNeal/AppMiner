@@ -47,6 +47,36 @@ const SHOP_ITEMS: ShopItem[] = [
     effect: "Early Release Builds"
   },
   {
+    id: "geothermal-lease",
+    name: "Reykjavik Geothermal Contract",
+    category: "upgrade",
+    price: 75.00,
+    description: "Lease geothermal power lines in Reykjavik to reduce remote node hosting fees to 5%.",
+    detail: "Bypasses default municipal grid overhead.",
+    icon: Flame,
+    effect: "5% Remote Hosting Fee"
+  },
+  {
+    id: "hydro-lease",
+    name: "Luleå Hydro-Power Contract",
+    category: "upgrade",
+    price: 60.00,
+    description: "Lease clean hydro-electric power in Luleå to reduce remote node hosting fees to 8%.",
+    detail: "Harnesses turbine grid infrastructure.",
+    icon: Zap,
+    effect: "8% Remote Hosting Fee"
+  },
+  {
+    id: "wind-lease",
+    name: "Helsinki Wind Grid Lease",
+    category: "upgrade",
+    price: 45.00,
+    description: "Secure wind energy quotas in Helsinki to reduce remote node hosting fees to 10%.",
+    detail: "Leverages regional offshore wind generation.",
+    icon: Cpu,
+    effect: "10% Remote Hosting Fee"
+  },
+  {
     id: "merch-stickers",
     name: "AppsMiners Decal Pack",
     category: "merch",
@@ -185,21 +215,21 @@ export default function ShopView({
             <div 
               key={item.id} 
               className={`p-6 bg-white/5 border rounded-2xl flex flex-col justify-between hover:bg-white/10 transition-all hover:scale-[1.02] relative overflow-hidden group ${
-                isOwnedUpgrade ? "border-[#00f2ff]/20 bg-[#00f2ff]/3" : "border-white/10"
+                isOwnedUpgrade ? "border-[#60a5fa]/20 bg-[#60a5fa]/3" : "border-white/10"
               }`}
             >
               {/* Overlay for success state */}
               {isSuccess && (
-                <div className="absolute inset-0 bg-[#030303]/95 z-10 flex flex-col items-center justify-center p-4">
-                  <CheckCircle size={36} className="text-[#00f2ff] animate-bounce mb-2" />
-                  <p className="text-xs font-black uppercase tracking-widest text-[#00f2ff]">Order Confirmed!</p>
+                <div className="absolute inset-0 bg-[#060d1f]/95 z-10 flex flex-col items-center justify-center p-4">
+                  <CheckCircle size={36} className="text-[#60a5fa] animate-bounce mb-2" />
+                  <p className="text-xs font-black uppercase tracking-widest text-[#60a5fa]">Order Confirmed!</p>
                   <p className="text-[10px] text-gray-400 mt-1 text-center font-bold">Credits deducted successfully.</p>
                 </div>
               )}
 
               <div>
                 <div className="flex justify-between items-start mb-4">
-                  <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-[#00f2ff] group-hover:bg-[#00f2ff]/10 transition-colors">
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-[#60a5fa] group-hover:bg-[#60a5fa]/10 transition-colors">
                     <Icon size={20} />
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
@@ -215,7 +245,7 @@ export default function ShopView({
               <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
                 <div>
                   <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Price</p>
-                  <p className="text-lg font-black text-[#00f2ff]">${item.price.toFixed(2)} USD</p>
+                  <p className="text-lg font-black text-[#60a5fa]">${item.price.toFixed(2)} USD</p>
                 </div>
 
                 <button
@@ -225,8 +255,8 @@ export default function ShopView({
                     isOwnedUpgrade 
                       ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
                       : isPurchasing 
-                        ? "bg-[#00f2ff]/20 text-[#00f2ff] cursor-wait"
-                        : "bg-[#00f2ff] text-black hover:bg-[#00e1ec] active:scale-[0.98]"
+                        ? "bg-[#60a5fa]/20 text-[#60a5fa] cursor-wait"
+                        : "bg-[#60a5fa] text-black hover:bg-[#3b82f6] hover:text-white active:scale-[0.98]"
                   }`}
                 >
                   {isOwnedUpgrade ? "Owned" : isPurchasing ? "Buying..." : "Purchase"}
@@ -238,7 +268,7 @@ export default function ShopView({
       </div>
 
       <div className="p-4 rounded-xl bg-white/5 border border-white/5 flex items-start gap-3 text-xs text-gray-500">
-        <AlertCircle size={16} className="text-[#00f2ff] flex-shrink-0 mt-0.5" />
+        <AlertCircle size={16} className="text-[#60a5fa] flex-shrink-0 mt-0.5" />
         <div>
           <span className="font-bold text-gray-400 block mb-0.5">Operator Note</span>
           Physical merchandise purchases are simulated demo orders. Upgrades are applied instantly and modify active mining efficiency calculations dynamically.

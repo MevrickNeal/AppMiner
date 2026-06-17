@@ -2,26 +2,42 @@
 
 html {
   scroll-behavior: smooth;
+  /* Safe area support for iPhone notch / Dynamic Island */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 @theme {
-  --color-primary: #00f2ff;
-  --color-accent: #ffb300;
-  --color-accent-light: #ffd54f;
+  --color-primary: #60a5fa;
+  --color-accent: #3b82f6;
+  --color-accent-light: #93c5fd;
   --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --background: #080808;
-  --foreground: #f0f0f0;
+  --background: #060d1f;
+  --foreground: #e8f0fe;
   --surface-light: #f8f9fa;
+  --dash-bg: #060d1f;
+  --dash-surface: #071028;
+  --dash-card: #091433;
+  --dash-accent: #60a5fa;
+  --dash-accent-glow: rgba(96, 165, 250, 0.15);
+  /* Safe area insets for PWA / notch devices */
+  --sat: env(safe-area-inset-top);
+  --sar: env(safe-area-inset-right);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  overflow-x: hidden;
   font-family: var(--font-plus-jakarta), sans-serif;
+  /* Smooth momentum scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+  /* Prevent text size adjustment on orientation change */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body.lang-ar {
@@ -44,6 +60,35 @@ body.lang-en, body.lang-de, body.lang-fr, body.lang-es {
   --font-sans: var(--font-plus-jakarta), sans-serif;
 }
 
+/* ─── Tap targets — all interactive elements ─────────────── */
+button, a, [role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Minimum 44px tap target (Apple HIG / WCAG) */
+button:not(.no-min-tap),
+a:not(.no-min-tap),
+[role="button"]:not(.no-min-tap) {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Mobile scroll helpers ──────────────────────────────── */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.scroll-x::-webkit-scrollbar { display: none; }
+
+.scroll-y {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* ─── Light section (HeroIntro) ─────────────────────────── */
 .section-light {
   background-color: var(--surface-light);
@@ -59,36 +104,42 @@ body.lang-en, body.lang-de, body.lang-fr, body.lang-es {
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.06);
 }
 
+/* ─── Glassmorphism — DARK context ──────────────────────── */
 .glass-card {
-  background-color: rgba(255, 255, 255, 0.07);
+  background-color: rgba(30, 58, 138, 0.12);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.1);
   border-radius: 2rem;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(96, 165, 250, 0.05);
   transition: background-color 400ms, box-shadow 400ms, border-color 400ms;
 }
 .glass-card:hover {
-  background-color: rgba(255, 255, 255, 0.11);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(30, 58, 138, 0.18);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(96, 165, 250, 0.08);
+  border-color: rgba(96, 165, 250, 0.2);
 }
 
-/* ─── Glassmorphism — DARK context ──────────────────────── */
 .glass-card-dark {
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: rgba(30, 58, 138, 0.08);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(96, 165, 250, 0.08);
   border-radius: 2rem;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
   transition: background-color 400ms, box-shadow 400ms, border-color 400ms;
 }
 .glass-card-dark:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.16);
+  background-color: rgba(30, 58, 138, 0.14);
+  border-color: rgba(96, 165, 250, 0.16);
+}
+
+/* ─── Dashboard blue ambient glow ────────────────────────── */
+.dash-glow-blue {
+  background: radial-gradient(ellipse at top, rgba(59, 130, 246, 0.08) 0%, transparent 60%),
+              radial-gradient(ellipse at bottom-right, rgba(96, 165, 250, 0.05) 0%, transparent 50%);
 }
 
 /* ─── Ticker animations ──────────────────────────────────── */
@@ -98,6 +149,78 @@ body.lang-en, body.lang-de, body.lang-fr, body.lang-es {
 }
 
 @keyframes ticker {
-  0% { transform: translateX(0); }
+  0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
+}
+
+/* ─── Mobile menu slide-in ───────────────────────────────── */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+@keyframes slideUp {
+  from { transform: translateY(100px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.animate-slide-in-right { animation: slideInRight 0.35s cubic-bezier(0.16,1,0.3,1) forwards; }
+.animate-slide-in-left  { animation: slideInLeft  0.35s cubic-bezier(0.16,1,0.3,1) forwards; }
+.animate-slide-up       { animation: slideUp      0.4s  cubic-bezier(0.16,1,0.3,1) forwards; }
+.animate-fade-in        { animation: fadeIn       0.3s  ease forwards; }
+
+/* ─── Page transitions ───────────────────────────────────── */
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: pageIn 0.4s cubic-bezier(0.16,1,0.3,1) forwards; }
+
+/* ─── Responsive table wrapper ───────────────────────────── */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 1rem;
+}
+.table-scroll table {
+  min-width: 560px;
+}
+
+/* ─── PWA standalone mode adjustments ───────────────────── */
+@media (display-mode: standalone) {
+  body {
+    /* Extra top padding for status bar in PWA mode */
+    padding-top: env(safe-area-inset-top);
+  }
+  /* Hide browser UI hints when in app mode */
+  .browser-only { display: none; }
+}
+
+/* ─── Smooth transitions for all interactive elements ───── */
+*, *::before, *::after {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* But don't add transition to elements that shouldn't animate */
+.no-transition, .no-transition * {
+  transition: none !important;
+}
+
+/* ─── Mobile-first responsive utilities ─────────────────── */
+@media (max-width: 640px) {
+  .glass-card {
+    border-radius: 1.25rem; /* Slightly smaller radius on mobile */
+  }
+  /* Ensure text doesn't cause horizontal scroll */
+  h1, h2, h3, h4, h5, h6, p {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
 }

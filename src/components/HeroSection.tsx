@@ -19,6 +19,8 @@ export default function HeroSection() {
 
   const frameIndex = useTransform(scrollYProgress, [0, 1], [0, totalFrames - 1]);
 
+  const readyRef = useRef(false);
+
   // ── Draw a single frame onto the canvas ──────────────────
   const draw = useCallback((index: number) => {
     const canvas = canvasRef.current;
@@ -60,25 +62,51 @@ export default function HeroSection() {
   useEffect(() => {
     let loadedCount = 0;
     const images: HTMLImageElement[] = [];
+    const loadedIndices = new Set<number>();
+
+    const triggerLoad = (index: number) => {
+      if (loadedIndices.has(index)) return;
+      loadedIndices.add(index);
+      loadedCount++;
+      
+      // Require at least 3 frames to set ready, or draw if already ready
+      if (loadedCount >= 3 && !readyRef.current) {
+        readyRef.current = true;
+        setReady(true);
+      }
+      
+      // If we are ready and the image that just finished loading is the current active frame, draw it!
+      if (readyRef.current) {
+        const currentIndex = Math.floor(frameIndex.get());
+        if (currentIndex === index) {
+          draw(currentIndex);
+        }
+      }
+    };
 
     for (let i = 1; i <= totalFrames; i++) {
       const img = new Image();
       const num = i.toString().padStart(3, "0");
+      const index = i - 1;
+
+      img.onload = () => triggerLoad(index);
+      img.onerror = () => triggerLoad(index); // Count errors to avoid blocking
       img.src = `/sequence/ezgif-frame-${num}.png`;
-      img.onload = () => {
-        loadedCount++;
-        // Show animation as soon as first few frames are ready
-        if (loadedCount === 3) setReady(true);
-      };
+
+      // If image is already complete (cached), trigger immediately
+      if (img.complete) {
+        triggerLoad(index);
+      }
+
       images.push(img);
     }
 
     imagesRef.current = images;
-  }, []);
+  }, [draw, frameIndex]);
 
   // ── Redraw on scroll ─────────────────────────────────────
   useMotionValueEvent(frameIndex, "change", (latest) => {
-    if (ready) draw(latest);
+    if (readyRef.current) draw(latest);
   });
 
   // ── Initial draw when ready ───────────────────────────────
@@ -122,7 +150,7 @@ export default function HeroSection() {
         {/* Caption 1 – lower-left */}
         <motion.div
           style={{ opacity: cap1Opacity, y: cap1Y }}
-          className="pointer-events-none absolute left-8 lg:left-20 bottom-[30%] glass-panel rounded-3xl p-6 lg:p-8 max-w-xs lg:max-w-sm"
+          className="pointer-events-none absolute left-4 right-4 sm:left-8 sm:right-auto bottom-[30%] glass-panel rounded-3xl p-6 lg:p-8 max-w-none sm:max-w-xs lg:left-20 lg:max-w-sm"
           dir={isRtl ? "rtl" : "ltr"}
         >
           <h3 className="text-xl lg:text-2xl font-black text-black mb-2 tracking-tighter">{t("heroSecTitle1")}</h3>
@@ -132,7 +160,7 @@ export default function HeroSection() {
         {/* Caption 2 – upper-right */}
         <motion.div
           style={{ opacity: cap2Opacity, y: cap2Y }}
-          className="pointer-events-none absolute right-8 lg:right-20 top-[25%] glass-panel rounded-3xl p-6 lg:p-8 max-w-xs lg:max-w-sm"
+          className="pointer-events-none absolute left-4 right-4 sm:left-auto sm:right-8 top-[25%] glass-panel rounded-3xl p-6 lg:p-8 max-w-none sm:max-w-xs lg:right-20 lg:max-w-sm"
           dir={isRtl ? "rtl" : "ltr"}
         >
           <h3 className="text-xl lg:text-2xl font-black text-black mb-2 tracking-tighter">{t("heroSecTitle2")}</h3>
@@ -142,7 +170,7 @@ export default function HeroSection() {
         {/* Caption 3 – lower-right */}
         <motion.div
           style={{ opacity: cap3Opacity, y: cap3Y }}
-          className="pointer-events-none absolute right-8 lg:right-20 bottom-[25%] glass-panel rounded-3xl p-6 lg:p-8 max-w-xs lg:max-w-sm"
+          className="pointer-events-none absolute left-4 right-4 sm:left-auto sm:right-8 bottom-[25%] glass-panel rounded-3xl p-6 lg:p-8 max-w-none sm:max-w-xs lg:right-20 lg:max-w-sm"
           dir={isRtl ? "rtl" : "ltr"}
         >
           <h3 className="text-xl lg:text-2xl font-black text-black mb-2 tracking-tighter">{t("heroSecTitle3")}</h3>

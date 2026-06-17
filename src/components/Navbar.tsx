@@ -167,8 +167,8 @@ export default function Navbar() {
                           setLanguage(lang.code);
                           setDesktopLangOpen(false);
                         }}
-                        className={`w-full text-left px-4 py-3 text-xs font-bold text-gray-700 hover:bg-black/5 transition-colors flex items-center justify-between ${
-                          language.code === lang.code ? "bg-[#00f2ff]/10 text-black" : ""
+                        className={`w-full text-start px-4 py-3 text-xs font-bold text-gray-700 hover:bg-black/5 transition-colors flex items-center justify-between ${
+                          language.code === lang.code ? "bg-[#3b82f6]/10 text-black" : ""
                         }`}
                       >
                         <span className="flex items-center gap-2">
@@ -226,7 +226,7 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-20 inset-x-0 z-40 bg-[#f8f9fa]/95 backdrop-blur-xl border-b border-black/10 flex flex-col px-6 py-8 gap-6 md:hidden"
+            className="fixed top-20 inset-x-0 z-40 bg-[#f8f9fa]/95 backdrop-blur-xl border-b border-black/10 flex flex-col px-6 py-8 gap-6 md:hidden overflow-y-auto max-h-[calc(100vh-5rem)] scrollbar-thin"
             dir={isRtl ? "rtl" : "ltr"}
           >
             {/* Mobile logo */}
@@ -285,8 +285,8 @@ export default function Navbar() {
                           setMobileLangOpen(false);
                           setMobileOpen(false);
                         }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-black/5 rounded-xl transition-colors flex items-center justify-between ${
-                          language.code === lang.code ? "bg-[#00f2ff]/20 text-black font-black" : ""
+                        className={`w-full text-start px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-black/5 rounded-xl transition-colors flex items-center justify-between ${
+                          language.code === lang.code ? "bg-[#3b82f6]/20 text-black font-black" : ""
                         }`}
                       >
                         <span className="flex items-center gap-2">
@@ -305,9 +305,9 @@ export default function Navbar() {
               <Link
                 href="/dashboard"
                 onClick={() => setMobileOpen(false)}
-                className="mt-2 p-4 bg-black/5 border border-black/10 rounded-2xl flex items-center gap-4 transition-all text-left"
+                className="mt-2 p-4 bg-black/5 border border-black/10 rounded-2xl flex items-center gap-4 transition-all text-start"
               >
-                <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#00f2ff]/60 bg-[#0a0a0a] flex items-center justify-center flex-shrink-0">
+                <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#3b82f6]/60 bg-[#0a0a0a] flex items-center justify-center flex-shrink-0">
                   <Image
                     src="/Products/icon blue.png"
                     alt={user.name || "User Avatar"}

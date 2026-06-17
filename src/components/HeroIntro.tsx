@@ -99,24 +99,23 @@ export default function HeroIntro() {
           {t("heroIntroSub")}
         </motion.p>
 
-        {/* CTA row */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
-          className="mt-10 flex flex-wrap gap-4 justify-center"
+          className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center px-4 sm:px-0 w-full sm:w-auto"
         >
           <a 
             href="#products" 
             onClick={(e) => handleScroll(e, "products")}
-            className="px-8 py-4 bg-black text-white rounded-full text-[11px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl block text-center"
+            className="w-full sm:w-auto px-8 py-4 bg-black text-white rounded-full text-[11px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl block text-center"
           >
             {t("heroIntroShop")}
           </a>
           <a 
             href="#features" 
             onClick={(e) => handleScroll(e, "features")}
-            className="px-8 py-4 glass-panel text-black rounded-full text-[11px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all block text-center"
+            className="w-full sm:w-auto px-8 py-4 glass-panel text-black rounded-full text-[11px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all block text-center"
           >
             {t("heroIntroLearn")}
           </a>

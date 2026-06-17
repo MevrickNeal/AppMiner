@@ -303,10 +303,10 @@ export default function Footer() {
 
       {/* ── Main Footer ────────────────────────── */}
       <div className="max-w-[1400px] mx-auto px-6 py-16">
-        <div className="grid lg:grid-cols-5 gap-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 lg:gap-12">
 
           {/* Brand column */}
-          <div className="lg:col-span-1">
+          <div className="col-span-2 md:col-span-4 lg:col-span-1">
             <Link href="/" className="flex items-center gap-3 mb-6 group">
               {/* Icon version of logo on dark bg */}
               <div className="relative w-10 h-10 bg-white rounded-xl overflow-hidden flex-shrink-0">
@@ -330,7 +330,7 @@ export default function Footer() {
                   href={s.href}
                   whileHover={{ y: -3, scale: 1.1 }}
                   title={s.label}
-                  className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 hover:text-[#00f2ff] hover:border-[#00f2ff]/40 transition-colors"
+                  className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 hover:text-[#3b82f6] hover:border-[#3b82f6]/40 transition-colors"
                 >
                   <s.icon size={15} />
                 </motion.a>
@@ -356,6 +356,32 @@ export default function Footer() {
               </ul>
             </div>
           ))}
+
+          {/* Applications Column */}
+          <div>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-500 mb-5">
+              {language.code === "BN" ? "অ্যাপস" : language.code === "AR" ? "التطبيقات" : language.code === "HI" ? "ऐप्स" : "Applications"}
+            </h4>
+            <ul className="space-y-3">
+              <li>
+                <a
+                  href="/appsminers.apk"
+                  download="appsminers.apk"
+                  className="text-sm font-medium text-gray-500 hover:text-white transition-colors hover:translate-x-1 inline-block transition-transform duration-200"
+                >
+                  Android App (APK)
+                </a>
+              </li>
+              <li>
+                <Link
+                  href="/"
+                  className="text-sm font-medium text-gray-500 hover:text-white transition-colors hover:translate-x-1 inline-block transition-transform duration-200"
+                >
+                  iOS App (PWA)
+                </Link>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -382,7 +408,7 @@ export default function Footer() {
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 flex items-center gap-1">
-              <Zap size={10} className="text-[#00f2ff]" /> {t("footerSystemsOperational")}
+              <Zap size={10} className="text-[#3b82f6]" /> {t("footerSystemsOperational")}
             </span>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Cairo, Rajdhani, Hind_Siliguri } from "next/font/goo
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { LanguageProvider } from "@/context/LanguageContext";
+import PWAInstallBanner from "@/components/PWAInstallBanner";
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
@@ -40,6 +41,8 @@ export const metadata: Metadata = {
   },
   manifest: "/site.webmanifest",
   appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
     title: "AppsMiners",
   },
 };
@@ -50,6 +53,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
+  themeColor: "#060d1f",
 };
 
 export default function RootLayout({
@@ -66,6 +70,7 @@ export default function RootLayout({
         <LanguageProvider>
           <Navbar />
           {children}
+          <PWAInstallBanner />
         </LanguageProvider>
       </body>
     </html>

@@ -14,6 +14,7 @@ import { useTranslation } from "@/context/LanguageContext";
 import { CATALOG_I18N } from "@/locales/catalog";
 import { supabase } from "@/lib/supabase";
 import { safeSanityFetch } from "@/lib/sanity";
+import { sanitizeEmail, sanitizeText } from "@/lib/sanitize";
 
 // ─── Types ────────────────────────────────────────────────────
 type SpecGroup = { label: string; rows: { key: string; value: string; highlight?: boolean }[] };
@@ -43,7 +44,7 @@ const products: Product[] = [
     series: "Pro Series // Flagship",
     type: "flagship",
     hashrate: "200 TH/s",
-    efficiency: "25 J/TH",
+    efficiency: "18 J/TH",
     price: "$2,499",
     image: "/Products/T200 PRO.png",
     badge: "Best Seller",
@@ -55,8 +56,8 @@ const products: Product[] = [
         rows: [
           { key: "Hashrate",              value: "200 TH/s ± 5%", highlight: true },
           { key: "Algorithm",             value: "SHA-256" },
-          { key: "Power Consumption",     value: "5,000 W ± 10%", highlight: true },
-          { key: "Efficiency",            value: "25 J/TH", highlight: true },
+          { key: "Power Consumption",     value: "3,600 W ± 10%", highlight: true },
+          { key: "Efficiency",            value: "18 J/TH", highlight: true },
           { key: "ASIC Chips",            value: "256× Proprietary Gen-4" },
           { key: "Chip Process",          value: "5nm TSMC" },
         ],
@@ -100,7 +101,7 @@ const products: Product[] = [
     series: "Pro Series // Flagship",
     type: "flagship",
     hashrate: "100 TH/s",
-    efficiency: "28 J/TH",
+    efficiency: "20 J/TH",
     price: "$1,299",
     image: "/Products/F100.png",
     description:
@@ -111,8 +112,8 @@ const products: Product[] = [
         rows: [
           { key: "Hashrate",              value: "100 TH/s ± 5%", highlight: true },
           { key: "Algorithm",             value: "SHA-256" },
-          { key: "Power Consumption",     value: "2,800 W ± 10%", highlight: true },
-          { key: "Efficiency",            value: "28 J/TH", highlight: true },
+          { key: "Power Consumption",     value: "2,000 W ± 10%", highlight: true },
+          { key: "Efficiency",            value: "20 J/TH", highlight: true },
           { key: "ASIC Chips",            value: "128× Proprietary Gen-4" },
           { key: "Chip Process",          value: "5nm TSMC" },
         ],
@@ -156,7 +157,7 @@ const products: Product[] = [
     series: "Pro Series // Flagship",
     type: "flagship",
     hashrate: "50 TH/s",
-    efficiency: "30 J/TH",
+    efficiency: "22 J/TH",
     price: "$799",
     image: "/Products/F50.png",
     badge: "Entry Pro",
@@ -168,8 +169,8 @@ const products: Product[] = [
         rows: [
           { key: "Hashrate",              value: "50 TH/s ± 5%", highlight: true },
           { key: "Algorithm",             value: "SHA-256" },
-          { key: "Power Consumption",     value: "1,500 W ± 10%", highlight: true },
-          { key: "Efficiency",            value: "30 J/TH", highlight: true },
+          { key: "Power Consumption",     value: "1,100 W ± 10%", highlight: true },
+          { key: "Efficiency",            value: "22 J/TH", highlight: true },
           { key: "ASIC Chips",            value: "64× Proprietary Gen-3" },
           { key: "Chip Process",          value: "7nm Samsung" },
         ],
@@ -271,10 +272,10 @@ const products: Product[] = [
       {
         label: "Performance",
         rows: [
-          { key: "Hashrate",              value: "150 GH/s ± 10%", highlight: true },
+          { key: "Hashrate",              value: "40 GH/s ± 10%", highlight: true },
           { key: "Algorithm",             value: "SHA-256" },
-          { key: "Power Consumption",     value: "10 W (bus powered)", highlight: true },
-          { key: "Efficiency",            value: "67 mJ/GH" },
+          { key: "Power Consumption",     value: "4 W (bus powered)", highlight: true },
+          { key: "Efficiency",            value: "100 mJ/GH" },
           { key: "ASIC Chips",            value: "1× Gen-2 Nano-ASIC" },
         ],
       },
@@ -291,9 +292,9 @@ const products: Product[] = [
       {
         label: "Electrical",
         rows: [
-          { key: "Power Source",          value: "USB 3.0 (5V / 2A)" },
+          { key: "Power Source",          value: "USB 3.0 (5V / 0.8A)" },
           { key: "Connector",             value: "USB-A 3.0" },
-          { key: "Max Draw",              value: "10W" },
+          { key: "Max Draw",              value: "4W" },
         ],
       },
       {
@@ -324,10 +325,10 @@ const products: Product[] = [
       {
         label: "Performance",
         rows: [
-          { key: "Hashrate",              value: "50 GH/s ± 10%", highlight: true },
+          { key: "Hashrate",              value: "15 GH/s ± 10%", highlight: true },
           { key: "Algorithm",             value: "SHA-256 / Multi-algo" },
-          { key: "Power Consumption",     value: "5 W", highlight: true },
-          { key: "Efficiency",            value: "100 mJ/GH" },
+          { key: "Power Consumption",     value: "2 W", highlight: true },
+          { key: "Efficiency",            value: "133 mJ/GH" },
           { key: "ASIC Chips",            value: "1× Pocket ASIC" },
         ],
       },
@@ -344,7 +345,7 @@ const products: Product[] = [
       {
         label: "Electrical",
         rows: [
-          { key: "Power Source",          value: "USB-C (5V / 1A)" },
+          { key: "Power Source",          value: "USB-C (5V / 0.4A)" },
           { key: "Connector",             value: "USB-C" },
           { key: "Battery Compatible",    value: "Yes — USB-C power banks" },
         ],
@@ -372,14 +373,14 @@ const products: Product[] = [
     badge: "Save 30%",
     image: "/Products/starter kit clearbg..png",
     description:
-      "Everything you need to build your first distributed micro-mining farm. 10 devices, 2.15 TH/s combined, ready to run in under 10 minutes.",
+      "Everything you need to build your first distributed micro-mining farm. 10 devices, 1.68 TH/s combined, ready to run in under 10 minutes.",
     bundleContents: ["4× AppsMiners Pocket", "3× AppsMiners Mini", "3× AppsMiners Nano"],
     specGroups: [
       {
         label: "Bundle Performance",
         rows: [
-          { key: "Combined Hashrate",     value: "~2.15 TH/s", highlight: true },
-          { key: "Total Power Draw",      value: "185 W", highlight: true },
+          { key: "Combined Hashrate",     value: "~1.68 TH/s", highlight: true },
+          { key: "Total Power Draw",      value: "155 W", highlight: true },
           { key: "Devices Included",      value: "10 units" },
           { key: "Algorithms",            value: "SHA-256, Scrypt, Multi-algo" },
           { key: "Estimated ROI",         value: "4 – 6 months (market dependent)" },
@@ -388,9 +389,9 @@ const products: Product[] = [
       {
         label: "What's in the Box",
         rows: [
-          { key: "AppsMiners Pocket ×4",   value: "200 GH/s combined" },
+          { key: "AppsMiners Pocket ×4",   value: "60 GH/s combined" },
           { key: "AppsMiners Mini ×3",     value: "1,500 GH/s combined" },
-          { key: "AppsMiners Nano ×3",     value: "450 GH/s combined" },
+          { key: "AppsMiners Nano ×3",     value: "120 GH/s combined" },
           { key: "USB Hub (7-port)",      value: "Powered, included", highlight: true },
           { key: "Power Strip",           value: "Surge-protected, included" },
           { key: "Quick-Start Guide",     value: "Printed + digital PDF" },
@@ -944,6 +945,31 @@ function ProductModal({ product, onClose, locLabels }: { product: Product; onClo
   const cCode = language.code;
   const cl = CHECKOUT_I18N[cCode] || CHECKOUT_I18N.EN;
 
+  useEffect(() => {
+    // Lock background scrolling on html and body elements safely for iOS Safari
+    const scrollY = window.scrollY;
+    
+    const originalBodyPosition = document.body.style.position;
+    const originalBodyTop = document.body.style.top;
+    const originalBodyWidth = document.body.style.width;
+    const originalBodyOverflow = document.body.style.overflow;
+    
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      // Restore background scrolling
+      document.body.style.position = originalBodyPosition;
+      document.body.style.top = originalBodyTop;
+      document.body.style.width = originalBodyWidth;
+      document.body.style.overflow = originalBodyOverflow;
+      
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
   // Extract localized warranty from rows
   const warrantyRow = product.specGroups.flatMap((g) => g.rows).find((r) => r.key === locLabels.specKeys.Warranty || r.key === "Warranty");
   const warrantyVal = warrantyRow ? warrantyRow.value : "12 mo";
@@ -958,10 +984,14 @@ function ProductModal({ product, onClose, locLabels }: { product: Product; onClo
       />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-6 pointer-events-none">
+      <div 
+        className="fixed inset-0 z-[110] flex items-start md:items-center justify-center p-0 md:p-6 overflow-y-auto overscroll-contain"
+        onClick={onClose}
+      >
         <motion.div
           layoutId={`card-container-${product.id}`}
-          className="glass-card w-full max-w-6xl h-[90vh] md:max-h-[94vh] !rounded-t-[2rem] !rounded-b-none md:!rounded-3xl mt-auto md:mt-0 overflow-hidden pointer-events-auto relative flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+          className="glass-card w-full max-w-6xl h-auto md:h-[90vh] md:max-h-[94vh] !rounded-t-[2rem] !rounded-b-none md:!rounded-3xl mt-16 md:mt-0 overflow-hidden relative flex flex-col"
         >
           {/* Close */}
           <button
@@ -972,10 +1002,10 @@ function ProductModal({ product, onClose, locLabels }: { product: Product; onClo
           </button>
 
           {/* ── Two-column layout ── */}
-          <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+          <div className="flex flex-col md:flex-row flex-1 overflow-visible md:overflow-hidden">
 
             {/* LEFT — image + hero info */}
-            <div className="w-full md:w-[40%] flex flex-col border-r border-white/10 flex-shrink-0 bg-black/20">
+            <div className="w-full md:w-[40%] flex flex-col border-b md:border-b-0 md:border-r border-white/10 flex-shrink-0 bg-black/20">
 
               {/* Image area */}
               <div className="relative flex-none h-[260px] md:h-auto md:flex-1 bg-white/3 flex items-center justify-center p-8">
@@ -1041,7 +1071,7 @@ function ProductModal({ product, onClose, locLabels }: { product: Product; onClo
             </div>
 
             {/* RIGHT — spec sheet OR checkout */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-black/10">
+            <div className="w-full md:flex-1 flex flex-col overflow-visible md:overflow-hidden bg-black/10">
               {!isCheckout ? (
                 <>
                   {/* Tab bar */}
@@ -1066,7 +1096,7 @@ function ProductModal({ product, onClose, locLabels }: { product: Product; onClo
                   </div>
 
                   {/* Spec rows */}
-                  <div className="flex-1 overflow-y-auto p-6">
+                  <div className="flex-1 overflow-visible md:overflow-y-auto p-6">
                     <AnimatePresence mode="wait">
                       <motion.div
                         key={activeTab}
@@ -1163,11 +1193,21 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
       let balance = 100.00;
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const { data: wallet } = await supabase
+        let { data: wallet, error: walletError } = await supabase
           .from("wallets")
           .select("hot_wallet_balance")
           .eq("user_id", session.user.id)
           .single();
+
+        if (walletError || !wallet) {
+          const { data: newWallet } = await supabase
+            .from("wallets")
+            .insert({ user_id: session.user.id, hot_wallet_balance: 100.00, updated_at: new Date().toISOString() })
+            .select("hot_wallet_balance")
+            .single();
+          wallet = newWallet;
+        }
+
         if (wallet && wallet.hot_wallet_balance !== null) {
           const dbBal = parseFloat(String(wallet.hot_wallet_balance));
           if (dbBal === 0) {
@@ -1190,10 +1230,14 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!billingName || !billingEmail) {
-      alert("Please fill in billing details.");
+    const cleanName = sanitizeText(billingName);
+    const cleanEmail = sanitizeEmail(billingEmail);
+    if (!cleanName || !cleanEmail) {
+      alert("Please fill in valid billing details.");
       return;
     }
+    setBillingName(cleanName);
+    setBillingEmail(cleanEmail);
 
     // Check auth
     const { data: { session } } = await supabase.auth.getSession();
@@ -1225,11 +1269,21 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
 
               // 1. Fetch current balance
               let currentBalance = 100.00;
-              const { data: wallet } = await supabase
+              let { data: wallet, error: walletError } = await supabase
                 .from("wallets")
                 .select("hot_wallet_balance")
                 .eq("user_id", session.user.id)
                 .single();
+
+              if (walletError || !wallet) {
+                const { data: newWallet } = await supabase
+                  .from("wallets")
+                  .insert({ user_id: session.user.id, hot_wallet_balance: 100.00, updated_at: new Date().toISOString() })
+                  .select("hot_wallet_balance")
+                  .single();
+                wallet = newWallet;
+              }
+
               if (wallet && wallet.hot_wallet_balance !== null) {
                 const dbBal = parseFloat(String(wallet.hot_wallet_balance));
                 if (dbBal === 0) {
@@ -1285,9 +1339,7 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
                   hashrate: cleanHashrate,
                   power: cleanPower,
                   region: region.split(" (")[0],
-                  status: "pending_setup", // Set to pending_setup initially
-                  hosting_type: "remote",
-                  setup_configured: false
+                  status: "pending_setup" // Set to pending_setup initially
                 });
 
               if (nodeError) throw nodeError;
@@ -1318,7 +1370,7 @@ function CheckoutWizard({ product, cl, router, onClose }: { product: Product; cl
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 flex flex-col justify-between">
+    <div className="flex-1 overflow-visible md:overflow-y-auto p-6 flex flex-col justify-between">
       {processing ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-6 py-12">
           <div className="relative w-28 h-28">
